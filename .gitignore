@@ -1,0 +1,39 @@
+# --- Gradle ---
+.gradle/
+build/
+# El wrapper sí se sube: permite compilar sin instalar Gradle
+!gradle/wrapper/gradle-wrapper.jar
+
+# --- Kotlin ---
+.kotlin/
+
+# --- Android Studio / IntelliJ ---
+.idea/
+*.iml
+*.iws
+*.ipr
+captures/
+.navigation/
+.externalNativeBuild/
+.cxx/
+
+# Configuración local (ruta del SDK de cada computador)
+local.properties
+
+# --- Artefactos compilados ---
+*.apk
+*.aab
+*.ap_
+*.dex
+output-metadata.json
+
+# --- Firmas y secretos (nunca subir) ---
+*.jks
+*.keystore
+google-services.json
+
+# --- Logs y archivos del sistema ---
+*.log
+.DS_Store
+Thumbs.db
+desktop.ini
