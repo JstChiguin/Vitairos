@@ -12,10 +12,11 @@ import com.example.vitairosapp.ui.theme.VitairosAppTheme
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        // Barra de estado oscura (cabecera verde noche) y barra de navegación clara
+        // Barras del sistema transparentes: la cabecera y la barra inferior de la app
+        // pintan su propio fondo (y la pantalla de carga ocupa todo el alto)
         enableEdgeToEdge(
             statusBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
-            navigationBarStyle = SystemBarStyle.light(Color.WHITE, Color.WHITE)
+            navigationBarStyle = SystemBarStyle.light(Color.TRANSPARENT, Color.TRANSPARENT)
         )
         setContent {
             VitairosAppTheme {

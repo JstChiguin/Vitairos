@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="ic_launcher_background">#FFFFFF</color>
+    <!-- Fondo de la pantalla de carga (verde noche de la marca) -->
+    <color name="splash_background">#081D16</color>
+</resources>
