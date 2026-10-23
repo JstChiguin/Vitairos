@@ -9,89 +9,84 @@
 
 ## 1. Descripción del proyecto
 
-VITAIROS es una aplicación Android desarrollada para la captura y gestión de reportes operacionales en terreno.
+VITAIROS es un prototipo de aplicación Android desarrollado para la captura y gestión de reportes operacionales en terreno.
 
-El prototipo permite registrar información, incorporar archivos adjuntos y consultar los reportes almacenados en el dispositivo, incluso cuando no existe conexión a internet.
+Permite registrar información, incorporar fotografías y documentos PDF, almacenar reportes localmente y consultar su historial. Su funcionamiento contempla situaciones en las que no existe conexión a internet.
 
-El proyecto contempla una aplicación Android nativa y un prototipo HTML navegable utilizado como apoyo durante el desarrollo y la presentación académica.
+El proyecto incluye una aplicación Android nativa y un prototipo HTML navegable como apoyo al desarrollo y la presentación académica.
 
-**Alcance:** prototipo académico con datos ficticios. No existe conexión a un backend productivo ni autenticación corporativa real.
+**Alcance:** prototipo académico con usuarios y datos ficticios. No existe conexión con un backend productivo ni autenticación corporativa real.
 
 ## 2. Funcionalidades implementadas
 
-- Ingreso mediante selección de usuario de demostración.
-- Pantalla principal con resumen de reportes y estados.
-- Navegación entre Inicio, Nuevo reporte, Cola, Historial y Ajustes.
-- Formulario de creación de reportes operacionales.
+- Ingreso mediante usuarios de demostración.
+- Pantalla principal con resumen de reportes.
+- Navegación entre las secciones de la aplicación.
+- Creación y edición de reportes operacionales.
 - Selección de tipo de reporte y proceso asociado.
 - Registro de área, turno y observaciones.
 - Validación de campos obligatorios.
 - Captura de fotografías mediante la cámara.
 - Selección de imágenes desde la galería.
 - Selección de documentos PDF.
-- Vista previa y gestión de archivos adjuntos.
-- Revisión de los datos antes de confirmar el reporte.
-- Almacenamiento local mediante Room y SQLite.
+- Gestión de archivos adjuntos.
+- Revisión de la información antes de confirmar un reporte.
+- Almacenamiento local mediante Room/SQLite.
 - Gestión de borradores y reportes pendientes.
 - Cola de envío y sincronización simulada.
-- Historial y consulta de estados.
+- Historial y trazabilidad de reportes.
 - Animación de inicio y mensajes de retroalimentación.
 
 ### Flujo principal
 
 Ingreso simulado → Nuevo reporte → Datos generales → Adjuntos → Revisión → Guardado local → Cola de envío → Sincronización simulada → Historial.
 
-### Sincronización
+## 3. Tecnologías utilizadas
 
-La sincronización utiliza una API simulada (`MockSyncApi`), sin comunicación con un servidor productivo.
-
-El mecanismo contempla reintentos automáticos con intervalos de 5, 15 y 30 segundos.
-
-Los estados permiten identificar reportes en borrador, pendientes, en proceso de envío, sincronizados o con error.
-
-## 3. Requisitos técnicos
-
-| Componente | Versión o tecnología |
+| Componente | Tecnología |
 |---|---|
 | Lenguaje | Kotlin |
 | Interfaz | Jetpack Compose |
-| Arquitectura | MVVM + Repository |
-| Persistencia | Room 2.8.4 / SQLite |
-| Procesamiento de Room | KSP 2.3.12 |
-| minSdk | 26 (Android 8.0) |
-| compileSdk | 37 |
-| targetSdk | 37 |
-| Android Gradle Plugin | 9.4.1 |
-| Compose BOM | 2026.02.01 |
+| Arquitectura | MVVM |
+| Persistencia | Room / SQLite |
+| Almacenamiento de adjuntos | Archivos privados de Android |
+| Preferencias | SharedPreferences |
+| Sincronización | MockSyncApi |
+| Control de versiones | Git y GitHub |
+| Gestión del proyecto | Trello |
 
-Las versiones corresponden a la configuración declarada en el proyecto.
+### Configuración Android
 
-## 4. Abrir y ejecutar la aplicación
+- `minSdk`: 26
+- `compileSdk`: 37
+- `targetSdk`: 37
+
+Las versiones específicas de las dependencias se encuentran en los archivos de configuración Gradle.
+
+## 4. Instalación y ejecución
 
 ### Desde Android Studio
 
-1. Descargar o clonar el repositorio.
+1. Clonar o descargar el repositorio.
 2. Abrir Android Studio.
 3. Seleccionar **File → Open**.
-4. Abrir la carpeta raíz del proyecto `Vitairos`.
-5. Esperar a que finalice la sincronización de Gradle.
-6. Seleccionar un emulador Android compatible o conectar un dispositivo físico.
-7. Ejecutar el módulo `app` mediante **Run**.
+4. Abrir la carpeta raíz del proyecto VITAIROS.
+5. Esperar la sincronización de Gradle.
+6. Seleccionar un emulador compatible o conectar un dispositivo Android.
+7. Ejecutar el módulo `app`.
 
-Se recomienda utilizar una versión de Android Studio compatible con Android Gradle Plugin 9.4.1.
-
-### Compilar mediante Gradle
-
-Desde la carpeta raíz del proyecto, ejecutar:
-
-```bash
-./gradlew assembleDebug
-```
+### Compilación por terminal
 
 En Windows:
 
 ```powershell
 .\gradlew.bat assembleDebug
+```
+
+En Linux o macOS:
+
+```bash
+./gradlew assembleDebug
 ```
 
 El APK de depuración se genera en:
@@ -100,184 +95,121 @@ El APK de depuración se genera en:
 app/build/outputs/apk/debug/app-debug.apk
 ```
 
-## 5. Arquitectura del proyecto
+## 5. Arquitectura MVVM
 
-VITAIROS utiliza el patrón **Model-View-ViewModel (MVVM)** para separar la interfaz de usuario, la lógica de presentación y el acceso a los datos.
+La aplicación utiliza el patrón Model-View-ViewModel (MVVM) para separar la interfaz de usuario, la lógica de presentación y el acceso a los datos.
 
-- **View:** pantallas y componentes desarrollados con Jetpack Compose.
-- **ViewModel:** administra el estado de la aplicación, las validaciones y las acciones del usuario.
-- **Model y Repository:** representan la información y coordinan las operaciones de almacenamiento.
-- **Room/SQLite:** permiten guardar y recuperar reportes localmente.
+**View:** las pantallas están desarrolladas con Jetpack Compose y muestran la información administrada por el ViewModel.
 
-### Estructura de carpetas
+**ViewModel:** `AppViewModel` coordina el estado de la aplicación, las validaciones, la navegación y las acciones relacionadas con los reportes.
+
+**Model y Repository:** los modelos representan los datos del sistema y `ReportRepository` coordina las operaciones de almacenamiento y recuperación.
+
+**Persistencia:** Room permite trabajar con una base SQLite local.
+
+### Estructura principal
 
 ```text
 com.example.vitairosapp
 │
 ├── MainActivity.kt
 │
-├── data
-│   ├── model
-│   │   ├── Report
-│   │   ├── Attachment
-│   │   ├── ReportStatus
-│   │   ├── AttachmentSource
-│   │   ├── LogEntry
-│   │   ├── SyncResult
-│   │   └── ImportResult
-│   │
-│   ├── catalog
-│   │   └── Catalogs
-│   │
-│   ├── local
-│   │   ├── AppPreferences
-│   │   ├── AttachmentStore
-│   │   ├── ReportJson
-│   │   └── db
-│   │       ├── VitairosDatabase
-│   │       ├── ReportDao
-│   │       ├── ReportMappers
-│   │       └── entity
-│   │
-│   ├── remote
-│   │   └── MockSyncApi
-│   │
-│   └── repository
-│       └── ReportRepository
+├── data/
+│   ├── model/
+│   ├── catalog/
+│   ├── local/
+│   │   ├── db/
+│   │   │   ├── VitairosDatabase.kt
+│   │   │   ├── ReportDao.kt
+│   │   │   └── entity/
+│   │   └── AttachmentStore.kt
+│   ├── remote/
+│   │   └── MockSyncApi.kt
+│   └── repository/
+│       └── ReportRepository.kt
 │
-├── util
-│   ├── BitmapUtils
-│   ├── PdfUtils
-│   └── Format
+├── util/
 │
-└── ui
+└── ui/
     ├── VitairosApp.kt
-    ├── navigation
-    │   ├── Screen
-    │   └── Tab
-    │
-    ├── viewmodel
-    │   ├── AppViewModel
-    │   └── Confirmation
-    │
-    ├── components
-    │
-    ├── screens
-    │   ├── splash
-    │   ├── login
-    │   ├── home
-    │   ├── report
-    │   ├── queue
-    │   ├── history
-    │   ├── detail
-    │   └── settings
-    │
-    └── theme
+    ├── navigation/
+    ├── viewmodel/
+    │   └── AppViewModel.kt
+    ├── components/
+    ├── screens/
+    │   ├── splash/
+    │   ├── login/
+    │   ├── home/
+    │   ├── report/
+    │   ├── queue/
+    │   ├── history/
+    │   ├── detail/
+    │   └── settings/
+    └── theme/
 ```
 
-## 6. Validaciones y gestión de estado
+## 6. Almacenamiento local
 
-Las validaciones del formulario se gestionan desde `AppViewModel.kt`.
+La aplicación utiliza Room/SQLite como mecanismo principal de persistencia.
 
-Por ejemplo, antes de avanzar desde los datos generales hacia los adjuntos, el método `goToAttachments()` comprueba que se hayan seleccionado el tipo de reporte y el proceso asociado.
+La base de datos `vitairos.db` contempla las siguientes entidades:
 
-Si alguno está vacío, se muestra un mensaje de advertencia y se impide avanzar.
-
-Esto permite mantener las validaciones separadas de los componentes visuales de Jetpack Compose.
-
-El ViewModel también administra las acciones de navegación, la información temporal del reporte y los estados que se muestran en pantalla.
-
-## 7. Almacenamiento local con Room y SQLite
-
-La información de los reportes se almacena en una base de datos SQLite administrada mediante Room.
-
-La base de datos se identifica como `vitairos.db` y se encuentra en el almacenamiento privado de la aplicación.
-
-### Tablas principales
-
-| Tabla | Información almacenada |
+| Entidad | Función |
 |---|---|
-| `reports` | Datos generales, estado, intentos y otra información del reporte |
-| `attachments` | Metadatos y referencias de los archivos adjuntos |
-| `log_entries` | Eventos utilizados para la trazabilidad |
-| `draft` | Información temporal del reporte en creación o edición |
+| `ReportEntity` | Almacena la información de los reportes |
+| `AttachmentEntity` | Registra los metadatos y referencias de los archivos adjuntos |
+| `LogEntryEntity` | Registra eventos de trazabilidad |
+| `DraftEntity` | Conserva información del reporte en elaboración |
 
-### Archivos adjuntos
+Los archivos adjuntos se almacenan por separado en el espacio privado de Android. La base de datos mantiene las referencias necesarias para asociarlos a sus reportes.
 
-Las fotografías y documentos PDF se almacenan en el espacio privado de la aplicación.
+Este mecanismo permite recuperar información al volver a abrir la aplicación y mantener reportes pendientes sin depender de un servidor.
 
-Los archivos se organizan bajo una estructura similar a:
+## 7. Validaciones
 
-```text
-files/attachments/<idReporte>/
-```
+Las validaciones del formulario se gestionan desde el ViewModel, separadas de los componentes visuales.
 
-La base de datos conserva las referencias y los metadatos correspondientes.
+Antes de avanzar hacia la pantalla de adjuntos, se comprueba que el usuario haya seleccionado el tipo de reporte y el proceso asociado.
 
-Las fotografías pueden optimizarse antes de ser almacenadas para reducir su tamaño.
+Si falta alguno de estos datos, se muestra el mensaje:
 
-### Persistencia y funcionamiento sin conexión
+> Selecciona tipo de reporte y proceso asociado.
 
-El almacenamiento local permite:
+El usuario debe completar los campos requeridos antes de continuar.
 
-- Guardar reportes sin depender de internet.
-- Mantener reportes pendientes en la cola.
-- Recuperar información al volver a abrir la aplicación.
-- Consultar estados e historial.
-- Conservar borradores durante el proceso de registro.
+## 8. Recursos nativos de Android
 
-La sincronización es simulada y no envía información a un servidor empresarial.
+La aplicación incorpora funcionalidades del dispositivo para adjuntar archivos a los reportes.
 
-### Migración desde JSON
+**Cámara:** permite capturar fotografías y asociarlas al reporte.
 
-El proyecto contempla la migración de información almacenada anteriormente en archivos JSON, como `reports.json` y `draft.json`, hacia la base de datos Room.
+**Galería:** permite seleccionar imágenes existentes en el dispositivo.
 
-El archivo `reports.migrated.json` se utiliza como respaldo durante este proceso.
+**Documentos PDF:** permite seleccionar documentos mediante el selector de archivos de Android.
 
-Las preferencias de la sesión simulada y los controles de demostración se administran mediante SharedPreferences.
+Los adjuntos seleccionados pueden revisarse antes de confirmar el reporte.
 
-## 8. Recursos nativos del dispositivo
+## 9. Funcionamiento sin conexión y sincronización
 
-La aplicación incorpora recursos de Android para adjuntar documentos a los reportes.
+El prototipo permite almacenar información localmente y mantener reportes pendientes en una cola de envío.
 
-### Cámara
+La sincronización se representa mediante `MockSyncApi`, sin comunicación con un servidor empresarial.
 
-Permite capturar una fotografía y asociarla al reporte.
+El mecanismo contempla un intento inicial y hasta tres reintentos con intervalos de 5, 15 y 30 segundos.
 
-Durante las pruebas se verificó que la imagen capturada apareciera en el listado de adjuntos con información sobre su tamaño y resolución.
+**Importante:** la sincronización es simulada y no transfiere información a un backend productivo.
 
-### Galería
+## 10. Interfaz y animaciones
 
-Permite seleccionar imágenes existentes en el dispositivo.
+La interfaz fue desarrollada con Jetpack Compose y componentes reutilizables.
 
-### Documentos PDF
+La pantalla de inicio utiliza una animación de aparición implementada mediante `Animatable`, `LaunchedEffect` y `animateTo`, con una duración configurada de 700 milisegundos.
 
-Permite seleccionar archivos PDF para incorporarlos al reporte.
+También se incorporan mensajes de validación e indicadores visuales para informar al usuario sobre las acciones realizadas.
 
-### Gestión de adjuntos
+## 11. Prototipo HTML navegable
 
-El prototipo contempla un máximo de cinco archivos por reporte y un tamaño máximo de 10 MB por archivo.
-
-Los adjuntos pueden visualizarse o eliminarse antes de confirmar el registro.
-
-## 9. Animaciones e interfaz
-
-La interfaz está desarrollada mediante Jetpack Compose y utiliza componentes reutilizables para mantener consistencia visual.
-
-La pantalla inicial se implementa en `SplashScreen.kt` y utiliza:
-
-- `Animatable`
-- `LaunchedEffect`
-- `animateTo`
-- `graphicsLayer`
-
-La animación de aparición tiene una duración configurada de 700 milisegundos.
-
-La aplicación también presenta indicadores de progreso, mensajes de validación y estados de los reportes para informar al usuario sobre las acciones realizadas.
-
-## 10. Prototipo HTML navegable
-
-El repositorio incluye un prototipo HTML que permite revisar visualmente el flujo principal de VITAIROS.
+El repositorio incluye un prototipo HTML para revisar visualmente el flujo principal de VITAIROS.
 
 **Ubicación:**
 
@@ -285,81 +217,70 @@ El repositorio incluye un prototipo HTML que permite revisar visualmente el fluj
 prototipo/index.html
 ```
 
-**Ejecución:**
-
-Abrir el archivo `index.html` en un navegador web.
+Para ejecutarlo, abrir `index.html` en un navegador web.
 
 El prototipo HTML es independiente de la aplicación Android y no reemplaza su implementación nativa.
 
-**Estado:** presentado durante la evaluación académica. Pendiente de validación formal por parte de VITAIROS Industrial AI.
+**Estado:** presentado académicamente y pendiente de validación formal por parte de VITAIROS Industrial AI.
 
-## 11. Pruebas realizadas
+## 12. Pruebas realizadas
 
-Durante el desarrollo y la preparación de la evaluación se realizaron pruebas en un emulador Android y en un dispositivo físico.
+Durante el desarrollo y la preparación de la defensa se realizaron verificaciones de las funcionalidades principales.
 
-| Prueba | Resultado |
+| Funcionalidad | Verificación académica |
 |---|---|
-| Ingreso mediante usuario de demostración | Funcional |
-| Navegación entre pantallas | Funcional |
-| Creación de reportes | Funcional |
-| Validación de campos obligatorios | Funcional |
-| Captura fotográfica | Funcional |
-| Selección de imágenes desde galería | Funcional |
-| Selección de archivos PDF | Funcional |
-| Guardado local de reportes | Funcional |
-| Recuperación de información al reabrir | Funcional |
-| Cola de envío sin conexión simulada | Funcional |
-| Historial de reportes | Funcional |
-| Animación de inicio | Funcional |
+| Ingreso simulado | Realizada |
+| Navegación entre pantallas | Realizada |
+| Creación de reportes | Realizada |
+| Validación de campos obligatorios | Realizada |
+| Captura de fotografías | Realizada |
+| Selección de adjuntos | Realizada |
+| Almacenamiento local | Realizada |
+| Cola de envío sin conexión simulada | Realizada |
+| Historial de reportes | Realizada |
+| Animación de inicio | Realizada |
 
-Las pruebas corresponden al alcance académico del prototipo y no constituyen una validación industrial o productiva.
+Las pruebas corresponden al alcance académico y no constituyen una certificación de funcionamiento en un entorno productivo.
 
-## 12. Documentación del proyecto
+## 13. Documentación técnica
 
-La documentación elaborada para el proyecto incluye:
+La carpeta `documentacion/` contiene los antecedentes y evidencias del proyecto, incluyendo:
 
-- Informe de evidencias del prototipo Android.
+- Arquitectura MVVM.
+- Descripción del almacenamiento local.
+- Navegación y pantallas.
+- Plan de pruebas y evidencias.
 - Especificación de Requisitos de Software (ERS).
-- Matriz de requerimientos funcionales y no funcionales.
+- Revisión de requisitos funcionales y no funcionales.
+- Informe del prototipo Android.
+- Matriz de requerimientos.
 - Diagrama de arquitectura MVVM.
-- Registro de tareas y avances en Trello.
 
-La ERS y la matriz conservan los requisitos pendientes de aprobación formal por parte de VITAIROS, diferenciándolos de las funcionalidades implementadas y probadas académicamente.
+La documentación académica no equivale a la aprobación formal de los requisitos por parte de VITAIROS Industrial AI.
 
-## 13. Gestión del proyecto con Trello
+## 14. Gestión del proyecto
 
-El equipo utilizó Trello para organizar y dar seguimiento a las actividades mediante un tablero Kanban.
+El equipo utilizó Trello para organizar las actividades, distribuir responsabilidades y registrar avances mediante un tablero Kanban.
 
-El tablero contempla las siguientes listas:
+Se documentaron las tareas de levantamiento de requerimientos, prototipo HTML, implementación Android y documentación técnica.
 
-- Backlog.
-- Por hacer.
-- En desarrollo.
-- En pruebas.
-- Terminado.
-- Bloqueado.
-
-Las actividades académicas principales se encuentran registradas en la lista Terminado, con sus respectivos checklists, comentarios y responsables.
-
-**Tablero del proyecto:**
+**Tablero Trello:**
 
 https://trello.com/b/aMtA47Sm/vitairos-industrial-ai-dsy1105
 
-## 14. Control de versiones con Git y GitHub
+## 15. Control de versiones
 
-El código fuente se administra mediante Git y GitHub.
+El desarrollo se administra mediante Git y GitHub.
 
-Se utilizó una organización por ramas:
+El flujo de trabajo contempla:
 
-| Rama | Función |
-|---|---|
-| `main` | Versión principal del proyecto |
-| `develop` | Integración de funcionalidades |
-| `feature/*` | Desarrollo de funcionalidades específicas |
+- `main`: rama principal.
+- `develop`: integración de funcionalidades.
+- `feature/*`: desarrollo de cambios específicos.
 
-Los cambios se registraron mediante commits y se integraron utilizando Pull Requests.
+Los avances se registran mediante commits y Pull Requests.
 
-**Repositorio del proyecto:**
+**Repositorio GitHub:**
 
 https://github.com/JstChiguin/Vitairos
 
@@ -367,33 +288,33 @@ https://github.com/JstChiguin/Vitairos
 
 https://github.com/JstChiguin/Vitairos/pull/1
 
-El historial del repositorio permite revisar las modificaciones y la participación de los integrantes.
+**Pull Request #2 — Documentación técnica:**
 
-## 15. Estado actual del proyecto
+https://github.com/JstChiguin/Vitairos/pull/2
 
-**Estado académico:** prototipo Android implementado, probado y presentado durante las Evaluaciones Parciales 2 y 3 de Desarrollo de Aplicaciones Móviles.
+## 16. Estado del proyecto
 
-Se completó el flujo principal de ingreso, creación de reportes, adjuntos, revisión, almacenamiento local, cola de sincronización simulada e historial.
+**Estado académico:** prototipo Android desarrollado y presentado durante las Evaluaciones Parciales 2 y 3 de la asignatura Desarrollo de Aplicaciones Móviles (DSY1105).
 
-El desarrollo se organizó mediante arquitectura MVVM y persistencia local con Room/SQLite.
+Se implementó el flujo principal de registro de reportes, incorporación de adjuntos, validaciones, almacenamiento local, cola de sincronización simulada e historial.
 
-**Limitaciones actuales:**
+### Limitaciones actuales
 
-- El ingreso utiliza usuarios ficticios.
-- La sincronización se realiza mediante una API simulada.
-- No existe integración con un backend productivo.
-- Los catálogos y requisitos definitivos requieren validación por parte de VITAIROS.
-- No se contempla procesamiento de inteligencia artificial productivo en esta etapa.
+- La autenticación utiliza usuarios ficticios.
+- La sincronización es simulada.
+- No existe integración con servicios empresariales reales.
+- Los requisitos definitivos requieren validación por parte de VITAIROS.
+- No se implementan servicios productivos de inteligencia artificial en esta etapa.
 
-**Próximos pasos:**
+### Trabajo pendiente
 
-- Revisar observaciones de la evaluación académica.
+- Revisar las observaciones de la evaluación.
 - Completar las validaciones pendientes con VITAIROS.
-- Ampliar las pruebas de funcionamiento.
+- Ampliar las pruebas.
 - Evaluar futuras integraciones según los requisitos aprobados.
 
 ---
 
 **VITAIROS Industrial AI**  
 **Equipo 1 — Chiguin Chiang y Lizandro Godoy**  
-**Duoc UC · Desarrollo de Aplicaciones Móviles (DSY1105)**
+**Duoc UC — Desarrollo de Aplicaciones Móviles (DSY1105)**
