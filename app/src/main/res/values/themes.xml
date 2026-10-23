@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.VitairosApp" parent="android:Theme.Material.Light.NoActionBar">
+        <!-- Mismo color que la pantalla de carga para que la transición sea continua -->
+        <item name="android:windowBackground">@color/splash_background</item>
+    </style>
+</resources>
