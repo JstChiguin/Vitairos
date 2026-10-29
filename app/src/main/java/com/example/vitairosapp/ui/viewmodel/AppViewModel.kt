@@ -323,13 +323,14 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             )
             repository.upsert(report)
             withContext(Dispatchers.IO) { store.prune(report.id, report.attachments) }
+            // Primero se cambia de pantalla y luego se limpia el borrador, para que el
+            // flujo de creación no alcance a mostrar "No hay un reporte en curso"
+            screen = then ?: if (status == ReportStatus.BORRADOR) Screen.HOME else Screen.QUEUE
             clearDraftState()
 
             if (status == ReportStatus.BORRADOR) {
                 notify("Borrador guardado en el dispositivo")
-                screen = then ?: Screen.HOME
             } else {
-                screen = then ?: Screen.QUEUE
                 when {
                     !online -> notify("Sin conexión: el reporte quedó pendiente en la cola y se enviará al recuperar la conexión")
                     sendNow -> send(report.id)
@@ -354,8 +355,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 if (existing != null) store.prune(d.id, existing.attachments)
                 else store.deleteReportFiles(d.id)
             }
-            clearDraftState()
             screen = then
+            clearDraftState()
             notify("Cambios descartados")
         }
     }
