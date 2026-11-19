@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -30,6 +31,7 @@ import com.example.vitairosapp.ui.components.RED_DOT
 import com.example.vitairosapp.ui.components.ReportCard
 import com.example.vitairosapp.ui.components.ScreenColumn
 import com.example.vitairosapp.ui.components.SectionTitle
+import com.example.vitairosapp.ui.components.TarjetaClima
 import com.example.vitairosapp.ui.components.VButton
 import com.example.vitairosapp.ui.components.VCard
 import com.example.vitairosapp.ui.theme.Copper
@@ -63,6 +65,10 @@ fun HomeScreen(vm: AppViewModel, reports: List<Report>) {
             MetricTile("${reports.count { it.status.isPending }}", "Pendientes", Modifier.weight(1f))
             MetricTile("${reports.count { it.status == ReportStatus.SINCRONIZADO }}", "Sincronizados", Modifier.weight(1f))
         }
+
+        SectionTitle("Condiciones meteorológicas", Modifier.padding(top = 8.dp))
+        TarjetaClima(vm.gestorClima)
+        LaunchedEffect(vm.online) { vm.gestorClima.consultar() }
 
         SectionTitle("Conectividad de demostración", Modifier.padding(top = 8.dp))
         VCard {

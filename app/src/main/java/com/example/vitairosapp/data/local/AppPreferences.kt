@@ -25,6 +25,10 @@ class AppPreferences(context: Context) {
         get() = prefs.getBoolean("usar_api_real", false)
         set(value) = prefs.edit { putBoolean("usar_api_real", value) }
 
+    var sitioClima: String?
+        get() = prefs.getString("sitio_clima", null)
+        set(value) = prefs.edit { putString("sitio_clima", value) }
+
     /** Paso del flujo de creación en que quedó el borrador (FORM, FILES o REVIEW). */
     var draftStep: String?
         get() = prefs.getString("draft_step", null)

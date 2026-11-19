@@ -9,6 +9,7 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.vitairosapp.data.catalog.Catalogs
+import com.example.vitairosapp.data.catalog.SitiosClima
 import com.example.vitairosapp.data.local.AppPreferences
 import com.example.vitairosapp.data.local.AttachmentStore
 import com.example.vitairosapp.data.model.Attachment
@@ -18,6 +19,7 @@ import com.example.vitairosapp.data.model.LogEntry
 import com.example.vitairosapp.data.model.Report
 import com.example.vitairosapp.data.model.ReportStatus
 import com.example.vitairosapp.data.model.SyncResult
+import com.example.vitairosapp.data.remote.ApiClimaOpenMeteo
 import com.example.vitairosapp.data.remote.ApiRemotaSincronizacion
 import com.example.vitairosapp.data.remote.ApiSincronizacion
 import com.example.vitairosapp.data.remote.MockSyncApi
@@ -47,6 +49,13 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     val reports: StateFlow<List<Report>> = repository.reports
     val installId: String = prefs.installId
+    val gestorClima = GestorClima(
+        api = ApiClimaOpenMeteo(),
+        alcance = viewModelScope,
+        estaEnLinea = { online },
+        sitioInicial = SitiosClima.buscar(prefs.sitioClima) ?: SitiosClima.LISTA.first(),
+        alCambiarSitio = { prefs.sitioClima = it.nombre },
+    )
 
     var user by mutableStateOf(prefs.user)
         private set
