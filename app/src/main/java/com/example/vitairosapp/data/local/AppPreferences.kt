@@ -21,6 +21,10 @@ class AppPreferences(context: Context) {
         get() = prefs.getBoolean("fail_next", false)
         set(value) = prefs.edit { putBoolean("fail_next", value) }
 
+    var usarApiReal: Boolean
+        get() = prefs.getBoolean("usar_api_real", false)
+        set(value) = prefs.edit { putBoolean("usar_api_real", value) }
+
     /** Paso del flujo de creación en que quedó el borrador (FORM, FILES o REVIEW). */
     var draftStep: String?
         get() = prefs.getString("draft_step", null)
@@ -41,6 +45,7 @@ class AppPreferences(context: Context) {
             remove("user")
             remove("online")
             remove("fail_next")
+            remove("usar_api_real")
             remove("draft_step")
         }
     }

@@ -41,6 +41,8 @@ fun SettingsScreen(vm: AppViewModel) {
             Divider()
             SettingSwitch("Simular error en el próximo envío (agota los reintentos)", vm.failNext, vm::updateFailNext)
             Divider()
+            SettingSwitch("Enviar a la API REST real (JSONPlaceholder, solo datos ficticios)", vm.usarApiReal, vm::cambiarUsoApiReal)
+            Divider()
             Spacer(Modifier.height(2.dp))
             VButton("Cargar reportes de ejemplo", vm::requestLoadDemo, Modifier.fillMaxWidth(), ButtonStyle.Secondary)
             VButton("Restablecer demostración", vm::requestReset, Modifier.fillMaxWidth(), ButtonStyle.Danger)
@@ -52,8 +54,14 @@ fun SettingsScreen(vm: AppViewModel) {
             InfoLine("Almacenamiento", "Privado de la aplicación")
         }
         Notice(
-            "La información se conserva en el almacenamiento privado de esta app. El envío es simulado: " +
-                "no se transmite a servidores. No usar información real o confidencial."
+            if (vm.usarApiReal) {
+                "La información se conserva en el almacenamiento privado de esta app. Con la API real activada " +
+                    "solo se envían datos ficticios de clasificación, sin adjuntos, notas, usuario ni identificador " +
+                    "de instalación. No usar información real o confidencial."
+            } else {
+                "La información se conserva en el almacenamiento privado de esta app. El envío es simulado: " +
+                    "no se transmite a servidores. No usar información real o confidencial."
+            }
         )
         VButton("Cerrar sesión simulada", vm::logout, Modifier.fillMaxWidth(), ButtonStyle.Ghost)
     }

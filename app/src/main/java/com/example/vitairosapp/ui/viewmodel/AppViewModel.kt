@@ -18,6 +18,8 @@ import com.example.vitairosapp.data.model.LogEntry
 import com.example.vitairosapp.data.model.Report
 import com.example.vitairosapp.data.model.ReportStatus
 import com.example.vitairosapp.data.model.SyncResult
+import com.example.vitairosapp.data.remote.ApiRemotaSincronizacion
+import com.example.vitairosapp.data.remote.ApiSincronizacion
 import com.example.vitairosapp.data.remote.MockSyncApi
 import com.example.vitairosapp.data.local.db.VitairosDatabase
 import com.example.vitairosapp.data.repository.ReportRepository
@@ -40,7 +42,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private val prefs = AppPreferences(app)
     private val repository = ReportRepository(VitairosDatabase.get(app).reportDao(), app.filesDir)
     private val store = AttachmentStore(app)
-    private val api = MockSyncApi()
+    private val apiSimulada: ApiSincronizacion = MockSyncApi()
+    private val apiRemota: ApiSincronizacion = ApiRemotaSincronizacion()
 
     val reports: StateFlow<List<Report>> = repository.reports
     val installId: String = prefs.installId
@@ -50,6 +53,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private val onlineState = mutableStateOf(prefs.online)
     val online: Boolean get() = onlineState.value
     var failNext by mutableStateOf(prefs.failNext)
+        private set
+    var usarApiReal by mutableStateOf(prefs.usarApiReal)
         private set
     var screen by mutableStateOf(if (prefs.user == null) Screen.LOGIN else Screen.HOME)
         private set
@@ -401,16 +406,17 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     private suspend fun runSync(id: String, signal: Channel<Unit>) {
+        val api = if (usarApiReal) apiRemota else apiSimulada
         val start = repository.update(id) {
             it.copy(status = ReportStatus.ENVIANDO, nextRetryAt = null)
-                .withLog("Iniciando sincronización mediante API simulada")
+                .withLog("Iniciando sincronización mediante ${api.descripcion}")
         } ?: return
 
-        val payload = api.buildPayload(start)
+        val cuerpoPeticion = api.armarCuerpo(start)
         val megabytes = start.attachments.sumOf { it.sizeBytes } / (1024.0 * 1024.0)
         repository.update(id) {
             it.withLog(
-                "Payload multipart preparado: metadata (${payload.length()} campos) + " +
+                "Payload preparado: metadata (${cuerpoPeticion.length()} campos) + " +
                     "${start.attachments.size} adjunto(s), " + String.format(Locale.US, "%.2f MB", megabytes)
             )
         }
@@ -425,7 +431,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                     )
             } ?: return
 
-            when (val result = api.upload(current, { online }, fail)) {
+            when (val result = api.enviar(current, { online }, fail)) {
                 SyncResult.NoConnection -> {
                     repository.update(id) {
                         it.copy(status = ReportStatus.EN_COLA, nextRetryAt = null)
@@ -441,7 +447,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                         it.copy(
                             status = ReportStatus.SINCRONIZADO, syncedAt = now,
                             receipt = result.receipt, nextRetryAt = null
-                        ).withLog("${result.message}. Comprobante ${result.receipt} (API mock)")
+                        ).withLog("${result.message}. Comprobante ${result.receipt} (${api.descripcion})")
                     }
                     // Tras la confirmación se liberan los archivos locales (se conserva la metadata)
                     withContext(Dispatchers.IO) { store.deleteReportFiles(id) }
@@ -449,7 +455,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                         r.copy(attachments = r.attachments.map { it.copy(path = null) })
                             .withLog("Archivos locales liberados; se conserva metadata e historial")
                     }
-                    notify("Reporte sincronizado (simulación)")
+                    notify("Reporte sincronizado mediante ${api.descripcion}")
                     return
                 }
 
@@ -511,6 +517,15 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun updateFailNext(value: Boolean) {
         failNext = value
         prefs.failNext = value
+    }
+
+    fun cambiarUsoApiReal(valor: Boolean) {
+        usarApiReal = valor
+        prefs.usarApiReal = valor
+        notify(
+            if (valor) "Se enviará a la API REST real con datos ficticios"
+            else "Se enviará con la API simulada"
+        )
     }
 
     fun requestDelete(id: String) {
@@ -623,6 +638,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             user = null
             onlineState.value = prefs.online
             failNext = prefs.failNext
+            usarApiReal = prefs.usarApiReal
             screen = Screen.LOGIN
             notify("Demostración restablecida")
         }
