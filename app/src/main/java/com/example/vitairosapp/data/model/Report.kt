@@ -24,6 +24,16 @@ data class Report(
     val updatedAt: Long = createdAt,
     val modo: ModoApp = ModoApp.OPERATIVO,
 ) {
+    val etiquetaEstado: String
+        get() = when {
+            status == ReportStatus.EN_COLA && modo == ModoApp.OPERATIVO -> "Pendiente de sincronización"
+            status == ReportStatus.SINCRONIZADO && modo == ModoApp.DEMO -> "Enviado (simulado)"
+            status == ReportStatus.SINCRONIZADO -> "Enviado (simulado, histórico)"
+            else -> status.label
+        }
+
+    val etiquetaModo: String get() = modo.etiqueta
+
     fun withLog(message: String): Report =
         copy(log = log + LogEntry(message = message), updatedAt = System.currentTimeMillis())
 

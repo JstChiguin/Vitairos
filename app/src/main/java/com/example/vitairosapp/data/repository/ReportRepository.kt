@@ -127,14 +127,17 @@ class ReportRepository(
     fun loadDraft(): Report? = borradores[modo]
 
     private suspend fun loadDraftFromDb(modo: ModoApp): Report? = try {
-        dao.getDraft(modo.ranuraBorrador)?.let { ReportJson.fromJson(JSONObject(it.reportJson)) }
+        dao.getDraft(modo.ranuraBorrador)?.let {
+            ReportJson.fromJson(JSONObject(it.reportJson)).copy(modo = modo)
+        }
     } catch (e: Exception) {
         Log.w(TAG, "Borrador ilegible; se descarta", e)
         null
     }
 
-    suspend fun saveDraft(value: Report?) = mutex.withLock {
+    suspend fun saveDraft(valor: Report?) = mutex.withLock {
         val ranura = modo.ranuraBorrador
+        val value = valor?.copy(modo = modo)
         borradores[modo] = value
         withContext(Dispatchers.IO) {
             if (value == null) dao.clearDraft(ranura)

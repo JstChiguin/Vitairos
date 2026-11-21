@@ -20,7 +20,7 @@ import com.example.vitairosapp.ui.viewmodel.AppViewModel
 
 @Composable
 fun QueueScreen(vm: AppViewModel, reports: List<Report>) {
-    val queue = reports.filter { it.status != ReportStatus.SINCRONIZADO }.sortedByDescending { it.createdAt }
+    val queue = reports.filter { it.status.isPending }.sortedByDescending { it.createdAt }
     val sendable = reports.count { it.status == ReportStatus.EN_COLA || it.status == ReportStatus.ERROR }
     ScreenColumn {
         if (vm.esDemo) {
@@ -48,13 +48,13 @@ fun QueueScreen(vm: AppViewModel, reports: List<Report>) {
             )
         } else {
             Notice(
-                "Cola local: estos reportes están guardados en el dispositivo y disponibles sin conexión. " +
-                    "El envío remoto no está implementado en el modo operativo.",
-                NoticeKind.Success
+                "Estos reportes están guardados en el dispositivo y pendientes de sincronización. " +
+                    "Aún no hay un servidor remoto configurado, por lo que ninguno figura como enviado.",
+                NoticeKind.Info
             )
         }
         if (queue.isEmpty()) {
-            EmptyState("✓", "No hay reportes pendientes.")
+            EmptyState("✓", if (vm.esDemo) "No hay reportes pendientes de envío." else "No hay reportes pendientes de sincronización.")
         } else {
             queue.forEach { report ->
                 ReportCard(

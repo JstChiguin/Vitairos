@@ -49,7 +49,7 @@ fun ReviewScreen(vm: AppViewModel) {
         VCard {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text("Resumen del reporte", Modifier.weight(1f), color = Ink, fontSize = 18.sp, fontWeight = FontWeight.Bold)
-                StatusPill(draft.status)
+                StatusPill(draft.status, draft.etiquetaEstado)
             }
             Divider()
             InfoLine("Tipo", draft.type)
@@ -106,6 +106,10 @@ fun ReviewScreen(vm: AppViewModel) {
                 ButtonStyle.Secondary
             )
         } else {
+            Notice(
+                "El reporte se guardará en este dispositivo como pendiente de sincronización. " +
+                    "Aún no existe un servidor remoto, por lo que no se marcará como enviado."
+            )
             ActionRow {
                 VButton("← Corregir", vm::backToAttachments, Modifier.weight(1f), ButtonStyle.Secondary)
                 VButton(

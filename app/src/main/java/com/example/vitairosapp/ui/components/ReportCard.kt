@@ -38,9 +38,12 @@ fun ReportCard(
                 color = Ink, fontSize = 15.sp, fontWeight = FontWeight.Bold
             )
             Spacer(Modifier.width(8.dp))
-            StatusPill(report.status)
+            StatusPill(report.status, report.etiquetaEstado)
         }
-        Text(report.id, color = Muted, fontSize = 13.sp, fontFamily = FontFamily.Monospace)
+        Text(
+            "${report.id} · ${report.etiquetaModo}",
+            color = Muted, fontSize = 13.sp, fontFamily = FontFamily.Monospace
+        )
         Text(
             report.process.ifBlank { "Sin proceso" } + " · " + formatDate(report.createdAt),
             color = Muted, fontSize = 13.sp
@@ -54,6 +57,10 @@ fun ReportCard(
             Text("Reintento automático a las ${formatTime(retryAt)}", color = CopperDark, fontSize = 12.5.sp)
         } else if (modoDemo && report.status == ReportStatus.EN_COLA && !online) {
             Text("Pendiente: se enviará al recuperar la conexión", color = CopperDark, fontSize = 12.5.sp)
+        } else if (!modoDemo && report.status == ReportStatus.EN_COLA) {
+            Text("Guardado en el dispositivo. Sin envío remoto confirmado.", color = CopperDark, fontSize = 12.5.sp)
+        } else if (report.status == ReportStatus.SINCRONIZADO) {
+            Text("Envío simulado: no se guardó en ningún servidor empresarial.", color = Muted, fontSize = 12.5.sp)
         }
         Spacer(Modifier.height(2.dp))
         ActionRow {

@@ -52,19 +52,26 @@ fun DetailScreen(vm: AppViewModel, reports: List<Report>) {
         VCard {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text("Estado actual", Modifier.weight(1f), color = Ink, fontSize = 18.sp, fontWeight = FontWeight.Bold)
-                StatusPill(report.status)
+                StatusPill(report.status, report.etiquetaEstado)
             }
             Text(report.id, color = Ink, fontSize = 14.sp, fontFamily = FontFamily.Monospace)
             Divider()
+            if (report.modo == com.example.vitairosapp.data.model.ModoApp.OPERATIVO && report.status == ReportStatus.EN_COLA) {
+                Hint("Guardado en este dispositivo. No existe confirmación de un destino remoto: pendiente de sincronización.")
+            }
+            if (report.status == ReportStatus.SINCRONIZADO) {
+                Hint("Envío simulado: no se almacenó en un servidor empresarial.")
+            }
             InfoLine("Tipo", report.type.ifBlank { "Sin tipo" })
             InfoLine("Proceso", report.process.ifBlank { "Sin proceso" })
             InfoLine("Área / faena", report.area.ifBlank { "No aplica" })
             InfoLine("Turno", report.shift.ifBlank { "No aplica" })
+            InfoLine("Modo de origen", report.etiquetaModo)
             InfoLine("Usuario", report.user)
             InfoLine("Fecha de creación", formatDate(report.createdAt))
             InfoLine("Versión", "${report.version} · Intentos: ${report.attempts}")
             InfoLine("Instalación", report.installId)
-            if (report.syncedAt != null) InfoLine("Sincronizado", formatDate(report.syncedAt))
+            if (report.syncedAt != null) InfoLine("Envío simulado", formatDate(report.syncedAt))
             report.receipt?.let { InfoLine("Comprobante", it) }
             InfoLine("Observaciones", report.notes.ifBlank { "Sin observaciones" })
         }

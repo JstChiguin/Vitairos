@@ -2,9 +2,9 @@ package com.example.vitairosapp.data.model
 
 enum class ReportStatus(val label: String) {
     BORRADOR("Borrador"),
-    EN_COLA("En cola"),
+    EN_COLA("Pendiente"),
     ENVIANDO("Enviando"),
-    SINCRONIZADO("Sincronizado"),
+    SINCRONIZADO("Enviado"),
     ERROR("Error");
 
     val isEditable: Boolean get() = this == BORRADOR || this == EN_COLA || this == ERROR

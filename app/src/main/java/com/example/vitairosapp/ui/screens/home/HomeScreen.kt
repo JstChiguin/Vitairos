@@ -64,10 +64,10 @@ fun HomeScreen(vm: AppViewModel, reports: List<Report>) {
             MetricTile("${reports.size}", "Total", Modifier.weight(1f))
             if (vm.esDemo) {
                 MetricTile("${reports.count { it.status.isPending }}", "Pendientes", Modifier.weight(1f))
-                MetricTile("${reports.count { it.status == ReportStatus.SINCRONIZADO }}", "Sincronizados", Modifier.weight(1f))
+                MetricTile("${reports.count { it.status == ReportStatus.SINCRONIZADO }}", "Enviados", Modifier.weight(1f))
             } else {
                 MetricTile("${reports.count { it.status == ReportStatus.BORRADOR }}", "Borradores", Modifier.weight(1f))
-                MetricTile("${reports.count { it.status == ReportStatus.EN_COLA }}", "En cola local", Modifier.weight(1f))
+                MetricTile("${reports.count { it.status == ReportStatus.EN_COLA }}", "Pendientes", Modifier.weight(1f))
             }
         }
 

@@ -23,7 +23,7 @@ import com.example.vitairosapp.ui.theme.WarnBg
 import com.example.vitairosapp.ui.theme.WarnText
 
 @Composable
-fun StatusPill(status: ReportStatus) {
+fun StatusPill(status: ReportStatus, etiqueta: String = status.label) {
     val symbol = when (status) {
         ReportStatus.BORRADOR -> "◌"
         ReportStatus.ENVIANDO -> "↻"
@@ -39,7 +39,7 @@ fun StatusPill(status: ReportStatus) {
         ReportStatus.ERROR -> DangerBg to Danger
     }
     Text(
-        "$symbol ${status.label}",
+        "$symbol $etiqueta",
         modifier = Modifier
             .clip(RoundedCornerShape(50))
             .background(bg)

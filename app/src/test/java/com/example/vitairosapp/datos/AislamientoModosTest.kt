@@ -231,4 +231,86 @@ class AislamientoModosTest {
 
         assertEquals(ReportStatus.EN_COLA, reabierto.find("OP-OFFLINE")?.status)
     }
+
+    @Test
+    fun `un borrador guardado en modo operativo conserva el modo operativo al reabrir`() = runBlocking {
+        val repositorio = abrir()
+        repositorio.saveDraft(reporte("BORRADOR-OP", ModoApp.OPERATIVO, ReportStatus.BORRADOR))
+
+        assertEquals(ModoApp.OPERATIVO, abrir().loadDraft()?.modo)
+    }
+
+    @Test
+    fun `la ranura del borrador define su modo aunque el json diga otro`() = runBlocking {
+        val repositorio = abrir(ModoApp.DEMO)
+        repositorio.saveDraft(reporte("BORRADOR-DEMO", ModoApp.OPERATIVO, ReportStatus.BORRADOR))
+
+        val reabierto = abrir(ModoApp.DEMO)
+
+        assertEquals(ModoApp.DEMO, reabierto.loadDraft()?.modo)
+    }
+
+    @Test
+    fun `un borrador demo con json sin modo no pasa a operativo`() = runBlocking {
+        val repositorio = abrir(ModoApp.DEMO)
+        val json = ReportJson.toJson(reporte("BORRADOR-DEMO", ModoApp.DEMO, ReportStatus.BORRADOR)).apply { remove("modo") }
+        dao.saveDraft(
+            com.example.vitairosapp.data.local.db.entity.DraftEntity(
+                slot = ModoApp.DEMO.ranuraBorrador, reportJson = json.toString()
+            )
+        )
+
+        assertEquals(ModoApp.DEMO, abrir(ModoApp.DEMO).loadDraft()?.modo)
+        assertNull(repositorio.find("BORRADOR-DEMO"))
+    }
+
+    @Test
+    fun `un reporte antiguo sin evidencia de origen permanece operativo y no se reclasifica`() = runBlocking {
+        val antiguo = reporte("ANTIGUO", ModoApp.OPERATIVO)
+        abrir().upsert(antiguo)
+
+        val reabierto = abrir()
+        reabierto.cambiarModo(ModoApp.DEMO)
+        reabierto.cambiarModo(ModoApp.OPERATIVO)
+
+        assertEquals(ModoApp.OPERATIVO, reabierto.find("ANTIGUO")?.modo)
+        assertTrue(dao.getAll().none { it.report.modo == ModoApp.DEMO })
+    }
+
+    @Test
+    fun `un reporte guardado en un modo nunca aparece en la lista del otro tras reabrir`() = runBlocking {
+        val repositorio = repositorioConAmbosModos()
+
+        val demo = abrir(ModoApp.DEMO)
+        val operativo = abrir(ModoApp.OPERATIVO)
+
+        assertEquals(listOf("DEMO-1"), demo.reports.value.map { it.id })
+        assertTrue(operativo.reports.value.none { it.modo == ModoApp.DEMO })
+        assertTrue(demo.reports.value.none { it.modo == ModoApp.OPERATIVO })
+        assertEquals(3, repositorio.idsReferenciados().size)
+    }
+
+    @Test
+    fun `un reporte enviado se conserva en el historial del modo`() = runBlocking {
+        val repositorio = abrir(ModoApp.DEMO)
+        repositorio.upsert(reporte("DEMO-ENVIADO", ModoApp.DEMO, ReportStatus.SINCRONIZADO))
+
+        assertEquals(ReportStatus.SINCRONIZADO, abrir(ModoApp.DEMO).find("DEMO-ENVIADO")?.status)
+    }
+
+    @Test
+    fun `un envio simulado exitoso conserva el reporte y su trazabilidad`() = runBlocking {
+        val repositorio = abrir(ModoApp.DEMO)
+        repositorio.upsert(reporte("DEMO-ENVIO", ModoApp.DEMO))
+
+        repositorio.update("DEMO-ENVIO") {
+            it.copy(status = ReportStatus.SINCRONIZADO, receipt = "RCV-1", syncedAt = 5L)
+                .withLog("Envío simulado completado")
+        }
+
+        val guardado = abrir(ModoApp.DEMO).find("DEMO-ENVIO")
+        assertEquals(ReportStatus.SINCRONIZADO, guardado?.status)
+        assertEquals("Envío simulado completado", guardado?.log?.last()?.message)
+        assertEquals(2, guardado?.log?.size)
+    }
 }

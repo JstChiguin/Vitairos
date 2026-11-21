@@ -43,7 +43,7 @@ fun ReportFormScreen(vm: AppViewModel) {
         StepIndicator(0)
         if (vm.isEditing) {
             Notice("Editando un reporte guardado. El ID, la fecha de creación y la trazabilidad no se modifican.")
-        } else {
+        } else if (vm.esDemo) {
             Notice("Catálogos provisionales para demostración. VITAIROS entregará o validará los definitivos.")
         }
 
@@ -51,7 +51,7 @@ fun ReportFormScreen(vm: AppViewModel) {
             FieldLabel("Tipo de reporte *")
             SelectField(
                 value = draft.type,
-                options = Catalogs.TIPOS,
+                options = Catalogs.tipos(draft.modo),
                 placeholder = "Seleccionar tipo",
                 onSelect = { v -> vm.updateDraft { it.copy(type = v) } }
             )
@@ -60,7 +60,7 @@ fun ReportFormScreen(vm: AppViewModel) {
             FieldLabel("Proceso asociado *")
             SelectField(
                 value = draft.process,
-                options = Catalogs.PROCESOS,
+                options = Catalogs.procesos(draft.modo),
                 placeholder = "Seleccionar proceso",
                 onSelect = { v -> vm.updateDraft { it.copy(process = v) } }
             )
