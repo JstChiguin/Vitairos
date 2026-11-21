@@ -453,13 +453,12 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         )
         repository.upsert(report)
         withContext(Dispatchers.IO) { store.prune(report.id, report.attachments) }
+        pantalla = then ?: if (status == ReportStatus.BORRADOR) Screen.HOME else Screen.QUEUE
         clearDraftState()
 
         if (status == ReportStatus.BORRADOR) {
             notify("Borrador guardado en el dispositivo. Todavía no se ha enviado")
-            pantalla = then ?: Screen.HOME
         } else {
-            pantalla = then ?: Screen.QUEUE
             when {
                 !esDemo -> notify(
                     "Reporte guardado en el dispositivo. Pendiente de sincronización: aún no hay un servidor remoto configurado"
@@ -486,8 +485,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 if (existing != null) store.prune(d.id, existing.attachments)
                 else store.deleteReportFiles(d.id)
             }
-            clearDraftState()
             pantalla = then
+            clearDraftState()
             notify("Cambios descartados")
         }
     }
