@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -30,6 +31,7 @@ import com.example.vitairosapp.ui.components.RED_DOT
 import com.example.vitairosapp.ui.components.ReportCard
 import com.example.vitairosapp.ui.components.ScreenColumn
 import com.example.vitairosapp.ui.components.SectionTitle
+import com.example.vitairosapp.ui.components.TarjetaClima
 import com.example.vitairosapp.ui.components.VButton
 import com.example.vitairosapp.ui.components.VCard
 import com.example.vitairosapp.ui.theme.Copper
@@ -60,25 +62,36 @@ fun HomeScreen(vm: AppViewModel, reports: List<Report>) {
 
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             MetricTile("${reports.size}", "Total", Modifier.weight(1f))
-            MetricTile("${reports.count { it.status.isPending }}", "Pendientes", Modifier.weight(1f))
-            MetricTile("${reports.count { it.status == ReportStatus.SINCRONIZADO }}", "Sincronizados", Modifier.weight(1f))
+            if (vm.esDemo) {
+                MetricTile("${reports.count { it.status.isPending }}", "Pendientes", Modifier.weight(1f))
+                MetricTile("${reports.count { it.status == ReportStatus.SINCRONIZADO }}", "Enviados", Modifier.weight(1f))
+            } else {
+                MetricTile("${reports.count { it.status == ReportStatus.BORRADOR }}", "Borradores", Modifier.weight(1f))
+                MetricTile("${reports.count { it.status == ReportStatus.EN_COLA }}", "Pendientes", Modifier.weight(1f))
+            }
         }
 
-        SectionTitle("Conectividad de demostración", Modifier.padding(top = 8.dp))
-        VCard {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    Text(
-                        if (vm.online) "$GREEN_DOT Conectado" else "$RED_DOT Sin conexión",
-                        color = Ink, fontSize = 16.sp, fontWeight = FontWeight.Bold
+        SectionTitle("Condiciones meteorológicas", Modifier.padding(top = 8.dp))
+        TarjetaClima(vm.gestorClima)
+        LaunchedEffect(vm.online) { vm.gestorClima.consultar() }
+
+        if (vm.esDemo) {
+            SectionTitle("Conectividad de demostración", Modifier.padding(top = 8.dp))
+            VCard {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            if (vm.online) "$GREEN_DOT Conectado" else "$RED_DOT Sin conexión",
+                            color = Ink, fontSize = 16.sp, fontWeight = FontWeight.Bold
+                        )
+                        Text("Control de red simulado", color = Muted, fontSize = 11.5.sp)
+                    }
+                    VButton(
+                        if (vm.online) "Desconectar" else "Reconectar",
+                        vm::toggleOnline,
+                        style = ButtonStyle.Secondary
                     )
-                    Text("Control de red simulado", color = Muted, fontSize = 11.5.sp)
                 }
-                VButton(
-                    if (vm.online) "Desconectar" else "Reconectar",
-                    vm::toggleOnline,
-                    style = ButtonStyle.Secondary
-                )
             }
         }
 
@@ -89,7 +102,7 @@ fun HomeScreen(vm: AppViewModel, reports: List<Report>) {
         } else {
             latest.forEach { report ->
                 ReportCard(
-                    report, vm.online,
+                    report, vm.online, vm.esDemo,
                     onDetail = { vm.openDetail(report.id) },
                     onEdit = { vm.editReport(report.id) },
                     onSend = { vm.send(report.id) }

@@ -15,6 +15,7 @@ fun Report.toEntity() = ReportEntity(
     type = type, process = process, area = area, shift = shift, notes = notes,
     status = status, attempts = attempts, version = version,
     syncedAt = syncedAt, receipt = receipt, nextRetryAt = nextRetryAt, updatedAt = updatedAt,
+    modo = modo,
 )
 
 fun Report.attachmentEntities() = attachments.mapIndexed { i, a ->
@@ -44,5 +45,5 @@ fun ReportWithDetails.toModel() = Report(
     status = report.status, attempts = report.attempts, version = report.version,
     log = log.sortedBy { it.position }.map { LogEntry(it.at, it.message) },
     syncedAt = report.syncedAt, receipt = report.receipt, nextRetryAt = report.nextRetryAt,
-    updatedAt = report.updatedAt,
+    updatedAt = report.updatedAt, modo = report.modo,
 )

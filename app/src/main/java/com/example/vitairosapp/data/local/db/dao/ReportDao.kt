@@ -10,6 +10,7 @@ import com.example.vitairosapp.data.local.db.entity.DraftEntity
 import com.example.vitairosapp.data.local.db.entity.LogEntryEntity
 import com.example.vitairosapp.data.local.db.entity.ReportEntity
 import com.example.vitairosapp.data.local.db.entity.ReportWithDetails
+import com.example.vitairosapp.data.model.ModoApp
 
 @Dao
 interface ReportDao {
@@ -52,17 +53,17 @@ interface ReportDao {
     @Query("DELETE FROM reports WHERE id = :id")
     suspend fun delete(id: String)
 
-    @Query("DELETE FROM reports")
-    suspend fun deleteAll()
+    @Query("DELETE FROM reports WHERE modo = :modo")
+    suspend fun deleteAllByModo(modo: ModoApp)
 
     // ---------------- Borrador en curso ----------------
 
-    @Query("SELECT * FROM draft WHERE slot = 0")
-    suspend fun getDraft(): DraftEntity?
+    @Query("SELECT * FROM draft WHERE slot = :slot")
+    suspend fun getDraft(slot: Int): DraftEntity?
 
     @Upsert
     suspend fun saveDraft(draft: DraftEntity)
 
-    @Query("DELETE FROM draft")
-    suspend fun clearDraft()
+    @Query("DELETE FROM draft WHERE slot = :slot")
+    suspend fun clearDraft(slot: Int)
 }

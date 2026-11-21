@@ -3,6 +3,7 @@ package com.example.vitairosapp.data.local
 import com.example.vitairosapp.data.model.Attachment
 import com.example.vitairosapp.data.model.AttachmentSource
 import com.example.vitairosapp.data.model.LogEntry
+import com.example.vitairosapp.data.model.ModoApp
 import com.example.vitairosapp.data.model.Report
 import com.example.vitairosapp.data.model.ReportStatus
 import org.json.JSONArray
@@ -25,6 +26,7 @@ object ReportJson {
         put("attempts", r.attempts)
         put("version", r.version)
         put("updatedAt", r.updatedAt)
+        put("modo", r.modo.name)
         r.syncedAt?.let { put("syncedAt", it) }
         r.receipt?.let { put("receipt", it) }
         r.nextRetryAt?.let { put("nextRetryAt", it) }
@@ -65,6 +67,7 @@ object ReportJson {
             receipt = if (o.has("receipt")) o.getString("receipt") else null,
             nextRetryAt = if (o.has("nextRetryAt")) o.getLong("nextRetryAt") else null,
             updatedAt = o.optLong("updatedAt", createdAt),
+            modo = ModoApp.desdeNombre(o.optString("modo")),
         )
     }
 
