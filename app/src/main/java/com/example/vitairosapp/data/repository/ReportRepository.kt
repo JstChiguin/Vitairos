@@ -60,7 +60,6 @@ class ReportRepository(
 
     fun find(id: String): Report? = _reports.value.firstOrNull { it.id == id }
 
-    /** Identificadores de todos los reportes y borradores, de ambos modos (para proteger sus archivos). */
     fun idsReferenciados(): Set<String> =
         todos.map { it.id }.toSet() + borradores.values.mapNotNull { it?.id }
 
@@ -69,7 +68,6 @@ class ReportRepository(
         _reports.value = nuevos.filter { it.modo == modo }
     }
 
-    /** Cambia el modo activo: la lista visible y el borrador pasan a ser los del nuevo modo. */
     suspend fun cambiarModo(nuevo: ModoApp) = mutex.withLock {
         modo = nuevo
         _reports.value = todos.filter { it.modo == nuevo }
@@ -118,7 +116,6 @@ class ReportRepository(
         withContext(Dispatchers.IO) { reports.forEach { write(it) } }
     }
 
-    /** Elimina únicamente los reportes del modo activo; los del otro modo no se tocan. */
     suspend fun clear() = mutex.withLock {
         val modoActual = modo
         publicar(todos.filterNot { it.modo == modoActual })

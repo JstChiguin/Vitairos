@@ -144,7 +144,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         notify("Sesión simulada cerrada")
     }
 
-    // ---------------- Modo de la aplicación ----------------
 
     fun cambiarModo(nuevo: ModoApp) {
         if (nuevo == modo) return

@@ -45,6 +45,7 @@ android {
         }
         release {
             if (firmaReleaseConfigurada) signingConfig = signingConfigs.getByName("release")
+            proguardFiles("proguard-rules.pro")
             optimization {
                 enable = true
                 packageScope = setOf("androidx.**", "kotlin.**", "kotlinx.**")
