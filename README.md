@@ -15,12 +15,12 @@ Permite registrar información, incorporar fotografías y documentos PDF, almace
 
 El proyecto incluye una aplicación Android nativa y un prototipo HTML navegable como apoyo al desarrollo y la presentación académica.
 
-**Alcance:** aplicación operativa local con un modo demostración independiente. En el **modo operativo** (el predeterminado) los reportes, fotografías y PDF se guardan en el dispositivo y funcionan sin conexión; no existe backend, sincronización empresarial, autenticación corporativa ni procesamiento de inteligencia artificial. En el **modo demostración** se usan exclusivamente datos ficticios y la sincronización de demostración contra JSONPlaceholder. Open-Meteo (condiciones meteorológicas reales) está disponible en ambos modos. Ambos servicios son públicos, gratuitos y sin clave.
+**Alcance:** aplicación operativa local con un modo demostración independiente. En el **modo operativo** (el predeterminado) los reportes, fotografías y PDF se guardan en el dispositivo y funcionan sin conexión; no existe backend, sincronización empresarial, autenticación corporativa ni procesamiento de inteligencia artificial, y el acceso se protege con un inicio de sesión local de demostración. En el **modo demostración** se usan exclusivamente datos ficticios y la sincronización de demostración contra JSONPlaceholder. Open-Meteo (condiciones meteorológicas reales) está disponible en ambos modos. Ambos servicios son públicos, gratuitos y sin clave.
 
 ## 2. Funcionalidades implementadas
 
 - Modo operativo local (predeterminado) y modo demostración opcional, con datos separados.
-- Ingreso mediante usuarios ficticios (solo en el modo demostración).
+- Inicio de sesión local de demostración en el modo operativo (usuario `operador`) y ingreso con usuarios ficticios en el modo demostración, que no exige credenciales.
 - Pantalla principal con resumen de reportes.
 - Navegación entre las secciones de la aplicación.
 - Creación y edición de reportes operacionales.
@@ -34,7 +34,7 @@ El proyecto incluye una aplicación Android nativa y un prototipo HTML navegable
 - Revisión de la información antes de confirmar un reporte.
 - Almacenamiento local mediante Room/SQLite.
 - Gestión de borradores y reportes pendientes.
-- Cola local en el modo operativo (los reportes quedan guardados en el dispositivo; el envío remoto no está implementado).
+- Cola local en el modo operativo: los reportes quedan guardados en el dispositivo como «Pendiente de sincronización»; nunca se marcan como enviados porque no existe un destino remoto.
 - Cola de envío con reintentos automáticos en el modo demostración.
 - Sincronización simulada (predeterminada en la demostración) y sincronización de demostración contra la API REST JSONPlaceholder (opcional, desde Ajustes, solo en la demostración).
 - Consulta de condiciones meteorológicas (temperatura, viento, humedad y probabilidad de lluvia) mediante la API REST Open-Meteo, para sitios ficticios seleccionables.
@@ -44,23 +44,31 @@ El proyecto incluye una aplicación Android nativa y un prototipo HTML navegable
 
 ### Flujo principal
 
-Modo operativo: Nuevo reporte → Datos generales → Adjuntos → Revisión → Guardado local (cola local) → Historial.
+Modo operativo: Inicio de sesión → Nuevo reporte → Datos generales → Adjuntos → Revisión → Guardado local (pendiente de sincronización) → Historial.
 
-Modo demostración: Ingreso simulado → Nuevo reporte → Datos generales → Adjuntos → Revisión → Guardado local → Cola de envío → Sincronización (simulada o JSONPlaceholder) → Historial.
+Modo demostración (sin credenciales): Ingreso a la demostración → Nuevo reporte → Datos generales → Adjuntos → Revisión → Guardado local → Cola de envío → Sincronización (simulada o JSONPlaceholder) → Historial.
 
 ## 2.1 Modo operativo y modo demostración
 
 | Aspecto | Modo operativo (predeterminado) | Modo demostración |
 |---|---|---|
-| Usuario | `Operador local`, sin autenticación | Usuarios ficticios (ingreso simulado) |
+| Acceso | Inicio de sesión local (`operador` / `12345`), sesión persistente y cierre desde Ajustes | Sin credenciales: ingreso con usuarios ficticios; accesible desde el inicio de sesión operativo |
 | Datos | Reportes reales del usuario | Exclusivamente datos ficticios |
 | Guardado | Room y almacenamiento privado, sin conexión | Room y almacenamiento privado |
-| Envío remoto | No existe; el botón Enviar no se muestra y `send` se rechaza | Simulado o JSONPlaceholder |
-| Controles de red/error/API | Ocultos | Visibles en Inicio, Cola y Ajustes |
-| Indicador | Ninguno | Encabezado «MODO DEMOSTRACIÓN · datos ficticios» |
+| Envío remoto | No existe; el botón Enviar no se muestra y `send` se rechaza. Los reportes quedan «Pendiente de sincronización» | Simulado o JSONPlaceholder («Envío simulado completado») |
+| Controles de red/error/API | Ocultos; el clima usa la conectividad real del dispositivo | Visibles en Inicio, Cola y Ajustes; la «red simulada» no es la conectividad real |
+| Indicador | Etiqueta «Operativo» en cada reporte | Encabezado «MODO DEMOSTRACIÓN · datos ficticios» |
 | Open-Meteo | Disponible | Disponible |
 
+**Inicio de sesión local:** al entrar al modo operativo sin sesión activa se muestra la pantalla de inicio de sesión. Las credenciales de demostración son usuario `operador` y contraseña `12345`; están pensadas solo para esta versión de demostración y portafolio, no son autenticación corporativa ni seguridad empresarial. La contraseña se oculta visualmente y puede mostrarse con el botón «Mostrar». La contraseña no se guarda en Room, DataStore ni preferencias: la aplicación solo conserva una huella derivada (PBKDF2-HMAC-SHA256 con sal) para compararla, y la sesión se persiste como una marca de tiempo en las preferencias, con una duración máxima de 12 horas. «Cerrar sesión» en Ajustes regresa al inicio de sesión, impide acceder a las pantallas operativas y conserva todos los reportes. El control de acceso está centralizado en `ControlAcceso` y el ViewModel rechaza además las acciones operativas sin sesión. No se registran contraseñas en logs.
+
+**Entrada y salida de la demostración:** desde el inicio de sesión operativo, «Explorar el modo demostración» entra sin credenciales, y «Salir de la demostración» regresa al modo operativo, donde se vuelve a exigir la sesión. Al entrar a la demostración nunca se muestran datos operativos.
+
 **Cambio de modo:** Ajustes → «Entrar al modo demostración» / «Salir de la demostración» (la pantalla de ingreso de la demostración también ofrece salir). No se puede cambiar de modo con un reporte en edición. El modo elegido se conserva al cerrar la aplicación.
+
+**Origen visible y catálogos:** cada tarjeta y el detalle muestran el modo de origen del reporte. Los catálogos de tipo y proceso del modo operativo no contienen textos de demostración; los de la demostración se identifican con «(demostración)». La ranura del borrador (0 operativo, 1 demostración) determina el modo del borrador al recuperarlo, aunque su JSON no lo indique.
+
+**Reportes anteriores:** los reportes creados antes de separar los modos no se reclasifican automáticamente sin evidencia de su origen. Los envíos simulados antiguos que aparecen en el modo operativo se rotulan «Enviado (simulado, histórico)».
 
 **Separación de datos:** cada reporte guarda su `modo` en la tabla `reports`. El repositorio solo expone, edita, elimina y restablece los reportes del modo activo, y cada modo tiene su propio borrador (ranuras 0 y 1 de la tabla `draft`). Entrar o salir de la demostración no modifica los reportes operativos, y «Restablecer demostración» solo elimina datos ficticios y sus archivos. Los archivos adjuntos de ambos modos se protegen al limpiar archivos huérfanos.
 
@@ -320,7 +328,11 @@ El modo remoto se activa con el interruptor **Enviar a la API REST real** en Aju
 
 El interruptor de error forzado de Ajustes aplica a ambos modos y no realiza ninguna petición cuando está activo.
 
-**Importante:** la sincronización no transfiere información a un backend productivo. Los reportes operativos nunca se envían a JSONPlaceholder: fuera del modo demostración `send` y `sendAll` se rechazan.
+**Estados de la cola:** Borrador (no enviado, no aparece en la cola), Pendiente (preparado para envío; en el modo operativo se muestra «Pendiente de sincronización»), Enviando, Enviado y Error. La cola solo lista Pendiente, Enviando y Error; los enviados permanecen en el Historial con su trazabilidad y nunca se eliminan. Una pulsación repetida no duplica el guardado ni el envío.
+
+**Mensajes de resultado:** en la demostración un envío correcto informa «Envío simulado completado»; con JSONPlaceholder se aclara que es una API de pruebas que no almacena el reporte. Nunca se afirma que se guardó en un servidor empresarial.
+
+**Importante:** la sincronización no transfiere información a un backend productivo. Los reportes operativos nunca se envían a JSONPlaceholder: fuera del modo demostración `send` y `sendAll` se rechazan y el reporte permanece guardado localmente, pendiente de sincronización real.
 
 ### 9.3 Condiciones meteorológicas (Open-Meteo)
 
@@ -340,7 +352,9 @@ La pantalla de Inicio incluye una tarjeta **Condiciones meteorológicas** que co
 - Los sitios son ficticios y se seleccionan desde la tarjeta: Planta ficticia Norte (referencia Antofagasta), Centro (Santiago) y Sur (Concepción). Cada uno usa coordenadas de referencia.
 - La aplicación no solicita permisos de ubicación ni lee la posición del dispositivo. La única información enviada a Open-Meteo son las coordenadas del sitio elegido.
 - El sitio elegido se conserva al cerrar la aplicación.
-- La consulta se realiza al abrir Inicio, al cambiar de sitio, al cambiar la conexión simulada y al pulsar **Actualizar clima**.
+- La consulta se realiza al abrir Inicio, al cambiar de sitio, al cambiar la red simulada y al pulsar **Actualizar clima**.
+- Al pulsar **Actualizar clima** se comprueba de inmediato la conectividad: en el modo operativo la del dispositivo (`ConnectivityManager`, permiso `ACCESS_NETWORK_STATE`) y en la demostración, además, el interruptor de red simulada. Sin conexión se muestra «Sin conexión. No se puede actualizar el clima», indicando si la causa es la red simulada o el dispositivo; no hace falta cambiar de sitio.
+- Si existe una lectura anterior se rotula «Última información disponible (no es una lectura actual)» y su hora de medición; nunca se presenta como recién consultada. Al recuperar la conexión se puede consultar de nuevo.
 - Estados de la tarjeta: sin datos, consultando, datos disponibles, sin conexión y error. En los dos últimos se conserva la última lectura obtenida, si existe.
 - Los errores se manejan igual que en la sincronización: sin red, tiempo de espera agotado, error HTTP y respuesta inesperada.
 
@@ -381,14 +395,16 @@ El proyecto incluye pruebas unitarias en `app/src/test/`, ejecutadas en la JVM. 
 | `EstadosReporteTest` | 9 | Estados de reporte (editable, eliminable, pendiente), valores iniciales, trazabilidad, identificadores y constantes de reintento |
 | `SerializacionReporteTest` | 6 | Serialización JSON de reportes y adjuntos, campos opcionales y datos inválidos |
 | `RepositorioReportesTest` | 14 | Altas, actualizaciones y bajas, envío interrumpido que vuelve a la cola, borrador y migración del JSON antiguo, con un DAO en memoria |
-| `AislamientoModosTest` | 16 | Separación de reportes entre modos, entrada y salida de la demo, edición y eliminación en el modo correcto, persistencia tras reabrir, integridad de adjuntos, borradores por modo y funcionamiento sin conexión |
+| `AislamientoModosTest` | 23 | Separación de reportes entre modos, entrada y salida de la demo, edición y eliminación en el modo correcto, persistencia tras reabrir, integridad de adjuntos, borradores por modo (la ranura define el modo), sin reclasificación de reportes antiguos y trazabilidad de envíos simulados |
+| `SesionOperativaTest` | 18 | Inicio de sesión correcto e incorrecto, campos vacíos, cierre, persistencia y expiración, ausencia de contraseña en el almacén y protección de pantallas por modo (`ControlAcceso`) |
+| `EtiquetasYCatalogosTest` | 11 | Catálogos sin textos de demostración en el modo operativo, etiquetas de estado y de modo, y estados de la cola |
 | `SelectorModoTest` | 7 | Modo operativo por defecto, entrada y salida de la demostración y persistencia del modo |
 | `ApiSimuladaTest` | 5 | Respuestas de la sincronización simulada |
 | `ApiRemotaSincronizacionTest` | 13 | Cliente de JSONPlaceholder: respuestas correctas, errores HTTP, tiempo de espera, sin conexión, respuestas inesperadas y datos que no deben enviarse |
 | `ApiClimaOpenMeteoTest` | 13 | Cliente de Open-Meteo: petición GET, interpretación de la respuesta, errores HTTP, tiempo de espera, sin conexión y respuestas inválidas |
-| `GestorClimaTest` | 15 | Estados de la tarjeta del clima, conservación de la última lectura, cambio de sitio y catálogo de sitios |
+| `GestorClimaTest` | 22 | Estados de la tarjeta del clima, actualización inmediata sin conexión, lectura anterior no presentada como actual, origen de la desconexión, recuperación de conectividad, cambio de sitio y catálogo de sitios |
 
-Resultado de la última ejecución: **98 pruebas unitarias, 0 fallidas, 0 omitidas**.
+Resultado de la última ejecución: **141 pruebas unitarias, 0 fallidas, 0 omitidas**.
 
 Además, `MigracionBaseDatosTest` (`app/src/androidTest/`, 3 pruebas) valida con `MigrationTestHelper` la migración de Room 1→2 sobre un emulador Android 13: conserva reportes y adjuntos, los clasifica por modo y conserva el borrador. Resultado de la última ejecución: **3 aprobadas, 0 fallidas**.
 
@@ -510,13 +526,14 @@ Se implementó el flujo principal de registro de reportes, incorporación de adj
 ### Limitaciones actuales
 
 - No existe backend, sincronización empresarial, autenticación corporativa ni procesamiento de inteligencia artificial; en el modo operativo los reportes permanecen solo en el dispositivo.
-- El usuario del modo operativo es fijo (`Operador local`); no hay cuentas ni control de acceso.
+- El inicio de sesión del modo operativo es local y de demostración (`operador` / `12345`): una sola credencial conocida, sin cuentas, roles ni recuperación; no equivale a seguridad empresarial.
+- En el modo operativo no hay destino remoto: los reportes quedan «Pendiente de sincronización» y no existe un estado «Enviado» real para ellos.
 - La sincronización de la demostración es simulada o usa JSONPlaceholder, que no conserva los reportes y recibe solo datos de clasificación ficticios, sin adjuntos.
 - Los adjuntos no se transmiten a ningún servicio externo.
-- La disponibilidad de conexión simulada solo existe en la demostración; el modo operativo no consulta el estado de red del sistema.
+- La red simulada solo existe en la demostración; el estado de red real del dispositivo solo se consulta para el clima.
 - La probabilidad de lluvia corresponde al máximo diario y la última lectura del clima no se conserva al cerrar la aplicación.
 - La cobertura de pruebas es baja en la interfaz y el ViewModel (ver 12.1.1); no hay pruebas de interfaz Compose y el bucle de reintentos no tiene pruebas automatizadas propias.
-- Los datos creados antes de la versión 2 se clasifican como operativos, salvo los que ya contenían adjuntos de demostración.
+- Los datos creados antes de la versión 2 se clasifican como operativos, salvo los que ya contenían adjuntos de demostración; no se reclasifican por otros indicios. Los envíos simulados antiguos se rotulan como históricos.
 - El APK Release solo es instalable si se firma con una clave privada propia (ver «Generación segura del APK Release»); la instalación en un teléfono físico no se ha probado.
 - Los requisitos definitivos requieren validación por parte de VITAIROS.
 
