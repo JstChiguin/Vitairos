@@ -15,11 +15,12 @@ Permite registrar información, incorporar fotografías y documentos PDF, almace
 
 El proyecto incluye una aplicación Android nativa y un prototipo HTML navegable como apoyo al desarrollo y la presentación académica.
 
-**Alcance:** prototipo académico con usuarios y datos ficticios. No existe conexión con un backend productivo ni autenticación corporativa real. La aplicación consume dos servicios públicos gratuitos y sin clave, únicamente con fines de demostración: JSONPlaceholder (sincronización de demostración) y Open-Meteo (condiciones meteorológicas).
+**Alcance:** aplicación operativa local con un modo demostración independiente. En el **modo operativo** (el predeterminado) los reportes, fotografías y PDF se guardan en el dispositivo y funcionan sin conexión; no existe backend, sincronización empresarial, autenticación corporativa ni procesamiento de inteligencia artificial. En el **modo demostración** se usan exclusivamente datos ficticios y la sincronización de demostración contra JSONPlaceholder. Open-Meteo (condiciones meteorológicas reales) está disponible en ambos modos. Ambos servicios son públicos, gratuitos y sin clave.
 
 ## 2. Funcionalidades implementadas
 
-- Ingreso mediante usuarios de demostración.
+- Modo operativo local (predeterminado) y modo demostración opcional, con datos separados.
+- Ingreso mediante usuarios ficticios (solo en el modo demostración).
 - Pantalla principal con resumen de reportes.
 - Navegación entre las secciones de la aplicación.
 - Creación y edición de reportes operacionales.
@@ -33,16 +34,35 @@ El proyecto incluye una aplicación Android nativa y un prototipo HTML navegable
 - Revisión de la información antes de confirmar un reporte.
 - Almacenamiento local mediante Room/SQLite.
 - Gestión de borradores y reportes pendientes.
-- Cola de envío con reintentos automáticos.
-- Sincronización simulada (predeterminada) y sincronización de demostración contra la API REST JSONPlaceholder (opcional, desde Ajustes).
+- Cola local en el modo operativo (los reportes quedan guardados en el dispositivo; el envío remoto no está implementado).
+- Cola de envío con reintentos automáticos en el modo demostración.
+- Sincronización simulada (predeterminada en la demostración) y sincronización de demostración contra la API REST JSONPlaceholder (opcional, desde Ajustes, solo en la demostración).
 - Consulta de condiciones meteorológicas (temperatura, viento, humedad y probabilidad de lluvia) mediante la API REST Open-Meteo, para sitios ficticios seleccionables.
 - Historial y trazabilidad de reportes.
 - Animación de inicio y mensajes de retroalimentación.
-- Pruebas automatizadas unitarias.
+- Pruebas automatizadas unitarias, pruebas instrumentadas de migración de la base de datos e informe de cobertura JaCoCo.
 
 ### Flujo principal
 
-Ingreso simulado → Nuevo reporte → Datos generales → Adjuntos → Revisión → Guardado local → Cola de envío → Sincronización (simulada o JSONPlaceholder) → Historial.
+Modo operativo: Nuevo reporte → Datos generales → Adjuntos → Revisión → Guardado local (cola local) → Historial.
+
+Modo demostración: Ingreso simulado → Nuevo reporte → Datos generales → Adjuntos → Revisión → Guardado local → Cola de envío → Sincronización (simulada o JSONPlaceholder) → Historial.
+
+## 2.1 Modo operativo y modo demostración
+
+| Aspecto | Modo operativo (predeterminado) | Modo demostración |
+|---|---|---|
+| Usuario | `Operador local`, sin autenticación | Usuarios ficticios (ingreso simulado) |
+| Datos | Reportes reales del usuario | Exclusivamente datos ficticios |
+| Guardado | Room y almacenamiento privado, sin conexión | Room y almacenamiento privado |
+| Envío remoto | No existe; el botón Enviar no se muestra y `send` se rechaza | Simulado o JSONPlaceholder |
+| Controles de red/error/API | Ocultos | Visibles en Inicio, Cola y Ajustes |
+| Indicador | Ninguno | Encabezado «MODO DEMOSTRACIÓN · datos ficticios» |
+| Open-Meteo | Disponible | Disponible |
+
+**Cambio de modo:** Ajustes → «Entrar al modo demostración» / «Salir de la demostración» (la pantalla de ingreso de la demostración también ofrece salir). No se puede cambiar de modo con un reporte en edición. El modo elegido se conserva al cerrar la aplicación.
+
+**Separación de datos:** cada reporte guarda su `modo` en la tabla `reports`. El repositorio solo expone, edita, elimina y restablece los reportes del modo activo, y cada modo tiene su propio borrador (ranuras 0 y 1 de la tabla `draft`). Entrar o salir de la demostración no modifica los reportes operativos, y «Restablecer demostración» solo elimina datos ficticios y sus archivos. Los archivos adjuntos de ambos modos se protegen al limpiar archivos huérfanos.
 
 ## 3. Tecnologías utilizadas
 
@@ -113,7 +133,41 @@ El APK de depuración se genera en:
 app/build/outputs/apk/debug/app-debug.apk
 ```
 
-Es un APK de depuración firmado con la clave de depuración de Android. No se genera un APK de producción firmado.
+Es un APK de depuración firmado con la clave de depuración de Android.
+
+### Generación segura del APK Release
+
+El APK Release se firma con una clave privada que **no se incluye en el repositorio** (`*.jks`, `*.keystore` y `keystore.properties` están en `.gitignore`).
+
+1. Crear el almacén de claves fuera del repositorio con `keytool` (la herramienta solicita las contraseñas de forma interactiva):
+
+   ```powershell
+   keytool -genkeypair -v -keystore C:\ruta\privada\vitairos-release.jks -alias vitairos -keyalg RSA -keysize 2048 -validity 10000
+   ```
+
+2. Copiar `keystore.properties.example` a `keystore.properties` en la raíz del proyecto y completar `storeFile`, `storePassword`, `keyAlias` y `keyPassword`. Este archivo no se versiona.
+3. Generar el APK:
+
+   ```powershell
+   .\gradlew.bat assembleRelease
+   ```
+
+   El resultado queda en `app/build/outputs/apk/release/app-release.apk`. Sin `keystore.properties`, Gradle genera `app-release-unsigned.apk`, que no es instalable; nunca se firma con la clave de depuración.
+4. Verificar la firma con las herramientas del SDK:
+
+   ```powershell
+   apksigner verify --verbose --print-certs app\build\outputs\apk\release\app-release.apk
+   ```
+
+El Release usa R8 con las reglas de `app/proguard-rules.pro`, que conservan las bibliotecas `kotlin` y `kotlinx` (sin ellas la app se cierra al iniciar). La firma se verificó con `apksigner` (esquema v2, certificado propio distinto del de depuración) y el APK se instaló y abrió en un emulador Android 13.
+
+Conservar una copia de seguridad privada del `.jks` y de sus contraseñas: sin ellas no es posible publicar actualizaciones firmadas con la misma clave. `applicationId`, `versionCode` (1) y `versionName` (1.0) se mantienen.
+
+### Instalación en Android
+
+- Con el dispositivo conectado y la depuración USB activada: `adb install -r app\build\outputs\apk\release\app-release.apk`.
+- O copiar el APK al teléfono y abrirlo, permitiendo la instalación de orígenes desconocidos para la aplicación que lo abre.
+- Requiere Android 8.0 (API 26) o superior.
 
 ## 5. Arquitectura MVVM
 
@@ -141,9 +195,11 @@ com.example.vitairosapp
 │   │   └── SitiosClima.kt
 │   ├── local/
 │   │   ├── db/
-│   │   │   ├── VitairosDatabase.kt
+│   │   │   ├── VitairosDatabase.kt  (versión 2, migración 1→2)
 │   │   │   ├── ReportDao.kt
 │   │   │   └── entity/
+│   │   ├── AppPreferences.kt
+│   │   ├── SelectorModo.kt
 │   │   └── AttachmentStore.kt
 │   ├── remote/
 │   │   ├── ApiSincronizacion.kt
@@ -177,7 +233,7 @@ com.example.vitairosapp
     └── theme/
 ```
 
-Las pruebas unitarias se encuentran en `app/src/test/`.
+Las pruebas unitarias se encuentran en `app/src/test/` y las pruebas instrumentadas de migración en `app/src/androidTest/`. Los esquemas exportados de Room están en `app/schemas/`.
 
 ## 6. Almacenamiento local
 
@@ -190,7 +246,9 @@ La base de datos `vitairos.db` contempla las siguientes entidades:
 | `ReportEntity` | Almacena la información de los reportes |
 | `AttachmentEntity` | Registra los metadatos y referencias de los archivos adjuntos |
 | `LogEntryEntity` | Registra eventos de trazabilidad |
-| `DraftEntity` | Conserva información del reporte en elaboración |
+| `DraftEntity` | Conserva el reporte en elaboración (una ranura por modo) |
+
+La tabla `reports` incluye la columna `modo` (`OPERATIVO` o `DEMO`). La base está en la versión 2: la migración 1→2 es no destructiva, agrega la columna con valor `OPERATIVO` por defecto y reclasifica como `DEMO` los reportes y el borrador que ya contenían adjuntos de demostración. Se validó con pruebas instrumentadas sobre un emulador.
 
 Los archivos adjuntos se almacenan por separado en el espacio privado de Android. La base de datos mantiene las referencias necesarias para asociarlos a sus reportes.
 
@@ -224,15 +282,15 @@ Los adjuntos seleccionados pueden revisarse antes de confirmar el reporte.
 
 ### 9.1 Offline-first con Room/SQLite
 
-Todo reporte se guarda primero en la base local Room/SQLite, con o sin conexión. La red solo interviene al enviar un reporte desde la cola; la persistencia local no depende de ella.
+Todo reporte se guarda primero en la base local Room/SQLite, con o sin conexión. En el modo operativo la red solo se usa para consultar el clima; en la demostración interviene además al enviar un reporte desde la cola. La persistencia local no depende de la red.
 
-Los reportes quedan pendientes en una cola de envío. Si la conexión no está disponible, permanecen en la cola y se envían al recuperarla. Un envío que quedó a medias al cerrar la aplicación vuelve a la cola al reabrirla.
+En el modo operativo, los reportes guardados quedan en una cola local sin envío remoto. En la demostración quedan pendientes en una cola de envío. Si la conexión no está disponible, permanecen en la cola y se envían al recuperarla. Un envío que quedó a medias al cerrar la aplicación vuelve a la cola al reabrirla.
 
 La disponibilidad de conexión se controla desde la aplicación, mediante el interruptor **Conexión simulada** de Inicio y Ajustes, y además se detecta cuando una petición real falla por falta de red.
 
 El mecanismo contempla un intento inicial y hasta tres reintentos automáticos con intervalos de 5, 15 y 30 segundos. Tras agotarlos, el reporte queda disponible para un reintento manual.
 
-### 9.2 Sincronización de demostración
+### 9.2 Sincronización de demostración (solo modo demostración)
 
 Existen dos implementaciones del envío, que comparten la interfaz `ApiSincronizacion`:
 
@@ -262,7 +320,7 @@ El modo remoto se activa con el interruptor **Enviar a la API REST real** en Aju
 
 El interruptor de error forzado de Ajustes aplica a ambos modos y no realiza ninguna petición cuando está activo.
 
-**Importante:** la sincronización no transfiere información a un backend productivo.
+**Importante:** la sincronización no transfiere información a un backend productivo. Los reportes operativos nunca se envían a JSONPlaceholder: fuera del modo demostración `send` y `sendAll` se rechazan.
 
 ### 9.3 Condiciones meteorológicas (Open-Meteo)
 
@@ -323,12 +381,16 @@ El proyecto incluye pruebas unitarias en `app/src/test/`, ejecutadas en la JVM. 
 | `EstadosReporteTest` | 9 | Estados de reporte (editable, eliminable, pendiente), valores iniciales, trazabilidad, identificadores y constantes de reintento |
 | `SerializacionReporteTest` | 6 | Serialización JSON de reportes y adjuntos, campos opcionales y datos inválidos |
 | `RepositorioReportesTest` | 14 | Altas, actualizaciones y bajas, envío interrumpido que vuelve a la cola, borrador y migración del JSON antiguo, con un DAO en memoria |
+| `AislamientoModosTest` | 16 | Separación de reportes entre modos, entrada y salida de la demo, edición y eliminación en el modo correcto, persistencia tras reabrir, integridad de adjuntos, borradores por modo y funcionamiento sin conexión |
+| `SelectorModoTest` | 7 | Modo operativo por defecto, entrada y salida de la demostración y persistencia del modo |
 | `ApiSimuladaTest` | 5 | Respuestas de la sincronización simulada |
 | `ApiRemotaSincronizacionTest` | 13 | Cliente de JSONPlaceholder: respuestas correctas, errores HTTP, tiempo de espera, sin conexión, respuestas inesperadas y datos que no deben enviarse |
 | `ApiClimaOpenMeteoTest` | 13 | Cliente de Open-Meteo: petición GET, interpretación de la respuesta, errores HTTP, tiempo de espera, sin conexión y respuestas inválidas |
 | `GestorClimaTest` | 15 | Estados de la tarjeta del clima, conservación de la última lectura, cambio de sitio y catálogo de sitios |
 
-Resultado de la última ejecución: **75 pruebas, 0 fallidas, 0 omitidas**.
+Resultado de la última ejecución: **98 pruebas unitarias, 0 fallidas, 0 omitidas**.
+
+Además, `MigracionBaseDatosTest` (`app/src/androidTest/`, 3 pruebas) valida con `MigrationTestHelper` la migración de Room 1→2 sobre un emulador Android 13: conserva reportes y adjuntos, los clasifica por modo y conserva el borrador. Resultado de la última ejecución: **3 aprobadas, 0 fallidas**.
 
 **Comandos:**
 
@@ -336,24 +398,35 @@ En Windows:
 
 ```powershell
 .\gradlew.bat testDebugUnitTest
+.\gradlew.bat connectedDebugAndroidTest
+.\gradlew.bat createDebugUnitTestCoverageReport
 ```
 
-En Linux o macOS:
+`connectedDebugAndroidTest` requiere un emulador o dispositivo conectado. En Linux o macOS se usa `./gradlew`.
 
-```bash
-./gradlew testDebugUnitTest
-```
-
-El informe HTML se genera en:
+Los informes se generan en:
 
 ```text
 app/build/reports/tests/testDebugUnitTest/index.html
+app/build/reports/coverage/test/debug/index.html
 ```
+
+### 12.1.1 Cobertura (JaCoCo)
+
+Medida con `createDebugUnitTestCoverageReport` sobre las 98 pruebas unitarias:
+
+| Métrica | Cubierto | Total | Porcentaje |
+|---|---|---|---|
+| Instrucciones | 4.426 | 29.229 | 15,1 % |
+| Ramas | 147 | 1.138 | 12,9 % |
+| Líneas | 516 | 3.236 | 15,9 % |
+
+La cobertura se concentra en la capa de datos: repositorio 94,7 % de líneas, clientes remotos 90,8 % y modelos 94,9 %. Las pantallas Compose y `AppViewModel` (8,3 % de líneas) no tienen pruebas automatizadas y el DAO generado por Room solo se ejercita en las pruebas instrumentadas, que no forman parte de este informe; por eso el porcentaje global es bajo.
 
 **Lo que las pruebas automatizadas no cubren:**
 
-- Pruebas de interfaz Compose ni pruebas instrumentadas en dispositivo o emulador.
-- La base de datos Room real: el repositorio se prueba con un DAO en memoria.
+- Pruebas de interfaz Compose.
+- La base de datos Room real en las pruebas unitarias: el repositorio se prueba con un DAO en memoria (solo la migración se prueba con Room real).
 - El bucle de reintentos automáticos de `AppViewModel`, que solo cuenta con pruebas de sus constantes.
 
 ### 12.2 Verificación manual
@@ -373,6 +446,8 @@ Durante el desarrollo y la preparación de la defensa se realizaron verificacion
 | Historial de reportes | Realizada |
 | Animación de inicio | Realizada |
 | Tarjeta de clima con conexión y sin conexión (emulador) | Realizada |
+| Inicio en modo operativo, entrada y salida de la demostración y persistencia del modo tras reiniciar (emulador Android 13) | Realizada |
+| Clima real de Open-Meteo en modo demostración (emulador) | Realizada |
 
 Las pruebas corresponden al alcance académico y no constituyen una certificación de funcionamiento en un entorno productivo.
 
@@ -390,7 +465,7 @@ La carpeta `documentacion/` contiene los antecedentes y evidencias del proyecto,
 - Matriz de requerimientos.
 - Diagrama de arquitectura MVVM.
 
-La documentación académica no equivale a la aprobación formal de los requisitos por parte de VITAIROS Industrial AI. Los documentos de esta carpeta no se actualizaron con la sincronización mediante JSONPlaceholder, el clima ni las pruebas automatizadas descritas en este README.
+La documentación académica no equivale a la aprobación formal de los requisitos por parte de VITAIROS Industrial AI. Los documentos de esta carpeta no se actualizaron con los modos operativo y demostración, la sincronización mediante JSONPlaceholder, el clima ni las pruebas automatizadas descritas en este README.
 
 ## 14. Gestión del proyecto
 
@@ -430,26 +505,26 @@ https://github.com/JstChiguin/Vitairos/pull/2
 
 **Estado académico:** prototipo Android desarrollado y presentado durante las Evaluaciones Parciales 2 y 3 de la asignatura Desarrollo de Aplicaciones Móviles (DSY1105).
 
-Se implementó el flujo principal de registro de reportes, incorporación de adjuntos, validaciones, almacenamiento local, cola de sincronización, historial, sincronización de demostración mediante JSONPlaceholder, consulta meteorológica mediante Open-Meteo y pruebas unitarias automatizadas.
+Se implementó el flujo principal de registro de reportes, incorporación de adjuntos, validaciones, almacenamiento local, cola local, historial, modo demostración independiente con sincronización de demostración mediante JSONPlaceholder, consulta meteorológica mediante Open-Meteo, pruebas unitarias e instrumentadas, cobertura JaCoCo y configuración de firma para el APK Release.
 
 ### Limitaciones actuales
 
-- La autenticación utiliza usuarios ficticios.
-- La sincronización predeterminada es simulada. La opción remota usa JSONPlaceholder, que no conserva los reportes, y envía solo datos de clasificación ficticios, sin adjuntos.
-- No existe integración con servicios empresariales reales ni con un backend productivo.
+- No existe backend, sincronización empresarial, autenticación corporativa ni procesamiento de inteligencia artificial; en el modo operativo los reportes permanecen solo en el dispositivo.
+- El usuario del modo operativo es fijo (`Operador local`); no hay cuentas ni control de acceso.
+- La sincronización de la demostración es simulada o usa JSONPlaceholder, que no conserva los reportes y recibe solo datos de clasificación ficticios, sin adjuntos.
 - Los adjuntos no se transmiten a ningún servicio externo.
-- La detección de falta de conexión depende del interruptor de la aplicación y del fallo de la petición; no se usa el estado de red del sistema.
+- La disponibilidad de conexión simulada solo existe en la demostración; el modo operativo no consulta el estado de red del sistema.
 - La probabilidad de lluvia corresponde al máximo diario y la última lectura del clima no se conserva al cerrar la aplicación.
-- No hay pruebas de interfaz ni instrumentadas, y el bucle de reintentos no tiene pruebas automatizadas propias.
-- Solo se genera un APK de depuración; no existe configuración de firma de producción.
+- La cobertura de pruebas es baja en la interfaz y el ViewModel (ver 12.1.1); no hay pruebas de interfaz Compose y el bucle de reintentos no tiene pruebas automatizadas propias.
+- Los datos creados antes de la versión 2 se clasifican como operativos, salvo los que ya contenían adjuntos de demostración.
+- El APK Release solo es instalable si se firma con una clave privada propia (ver «Generación segura del APK Release»); la instalación en un teléfono físico no se ha probado.
 - Los requisitos definitivos requieren validación por parte de VITAIROS.
-- No se implementan servicios productivos de inteligencia artificial en esta etapa.
 
 ### Trabajo pendiente
 
 - Revisar las observaciones de la evaluación.
 - Completar las validaciones pendientes con VITAIROS.
-- Ampliar las pruebas: bucle de reintentos, pruebas de interfaz y pruebas instrumentales con Room.
+- Ampliar las pruebas: bucle de reintentos, pruebas de interfaz y pruebas instrumentadas del DAO.
 - Actualizar los documentos de `documentacion/` con las APIs y las pruebas incorporadas.
 - Evaluar futuras integraciones según los requisitos aprobados.
 
