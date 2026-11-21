@@ -71,7 +71,7 @@ fun SettingsScreen(vm: AppViewModel) {
             VCard {
                 Text("Controles de la demostración", color = Ink, fontSize = 18.sp, fontWeight = FontWeight.Bold)
                 Text("Estos controles no corresponden a un sistema real de VITAIROS.", color = Muted, fontSize = 13.5.sp, lineHeight = 21.sp)
-                SettingSwitch("Conexión simulada disponible", vm.online, vm::setOnline)
+                SettingSwitch("Red simulada disponible (no es la conectividad real del dispositivo)", vm.online, vm::setOnline)
                 Divider()
                 SettingSwitch("Simular error en el próximo envío (agota los reintentos)", vm.failNext, vm::updateFailNext)
                 Divider()
@@ -85,6 +85,7 @@ fun SettingsScreen(vm: AppViewModel) {
         VCard {
             Text("Dispositivo", color = Ink, fontSize = 18.sp, fontWeight = FontWeight.Bold)
             InfoLine("Usuario", vm.user ?: "—")
+            if (!vm.esDemo) InfoLine("Sesión", if (vm.haySesionOperativa) "Activa en este dispositivo" else "Cerrada")
             InfoLine("Reportes del modo actual", "${reportes.size}")
             InfoLine("ID de instalación", vm.installId)
             InfoLine("Almacenamiento", "Privado de la aplicación")
@@ -92,8 +93,10 @@ fun SettingsScreen(vm: AppViewModel) {
         Notice(
             when {
                 !vm.esDemo ->
-                    "La información se conserva en el almacenamiento privado de esta app y no se transmite a servidores. " +
-                        "Solo la consulta meteorológica usa Internet (Open-Meteo)."
+                    "La información se conserva en el almacenamiento privado de esta app y no se transmite a servidores: " +
+                        "los reportes quedan pendientes de sincronización hasta que exista un destino remoto. " +
+                        "Solo la consulta meteorológica usa Internet (Open-Meteo). " +
+                        "El inicio de sesión es local y de demostración, no seguridad empresarial."
                 vm.usarApiReal ->
                     "Con la API real activada solo se envían datos ficticios de clasificación, sin adjuntos, notas, " +
                         "usuario ni identificador de instalación. No usar información real o confidencial."
@@ -102,7 +105,9 @@ fun SettingsScreen(vm: AppViewModel) {
             }
         )
         if (vm.esDemo) {
-            VButton("Cerrar sesión simulada", vm::logout, Modifier.fillMaxWidth(), ButtonStyle.Ghost)
+            VButton("Cerrar sesión de la demostración", vm::logout, Modifier.fillMaxWidth(), ButtonStyle.Ghost)
+        } else {
+            VButton("Cerrar sesión", vm::cerrarSesionOperativa, Modifier.fillMaxWidth(), ButtonStyle.Ghost)
         }
     }
 }

@@ -6,13 +6,19 @@ import com.example.vitairosapp.data.model.ModoApp
 import java.util.Locale
 import java.util.UUID
 
-class AppPreferences(context: Context) : AlmacenModo {
+class AppPreferences(context: Context) : AlmacenModo, AlmacenSesion {
 
     private val prefs = context.getSharedPreferences("vitairos_prefs", Context.MODE_PRIVATE)
 
     override var modo: ModoApp
         get() = ModoApp.desdeNombre(prefs.getString("modo", null))
         set(value) = prefs.edit { putString("modo", value.name) }
+
+    override var inicioSesionMillis: Long?
+        get() = prefs.getLong("inicio_sesion_operativa", 0L).takeIf { it > 0L }
+        set(value) = prefs.edit {
+            if (value == null) remove("inicio_sesion_operativa") else putLong("inicio_sesion_operativa", value)
+        }
 
     var user: String?
         get() = prefs.getString("user", null)

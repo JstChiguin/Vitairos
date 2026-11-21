@@ -12,6 +12,10 @@ import com.example.vitairosapp.data.catalog.Catalogs
 import com.example.vitairosapp.data.catalog.SitiosClima
 import com.example.vitairosapp.data.local.AppPreferences
 import com.example.vitairosapp.data.local.AttachmentStore
+import com.example.vitairosapp.data.local.ConectividadDispositivo
+import com.example.vitairosapp.data.local.ResultadoInicioSesion
+import com.example.vitairosapp.data.local.SesionOperativa
+import com.example.vitairosapp.data.local.VerificadorCredencialesLocales
 import com.example.vitairosapp.data.local.SelectorModo
 import com.example.vitairosapp.data.model.Attachment
 import com.example.vitairosapp.data.model.AttachmentSource
@@ -27,6 +31,7 @@ import com.example.vitairosapp.data.remote.ApiSincronizacion
 import com.example.vitairosapp.data.remote.MockSyncApi
 import com.example.vitairosapp.data.local.db.VitairosDatabase
 import com.example.vitairosapp.data.repository.ReportRepository
+import com.example.vitairosapp.ui.navigation.ControlAcceso
 import com.example.vitairosapp.ui.navigation.Screen
 import java.io.File
 import java.util.Locale
@@ -45,6 +50,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     private val prefs = AppPreferences(app)
     private val selectorModo = SelectorModo(prefs)
+    private val sesionOperativa = SesionOperativa(prefs)
+    private val conectividad = ConectividadDispositivo(app)
     private val repository = ReportRepository(VitairosDatabase.get(app).reportDao(), app.filesDir, selectorModo.actual)
     private val store = AttachmentStore(app)
     private val apiSimulada: ApiSincronizacion = MockSyncApi()
@@ -55,24 +62,40 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     val gestorClima = GestorClima(
         api = ApiClimaOpenMeteo(),
         alcance = viewModelScope,
-        estaEnLinea = { online },
+        estaEnLinea = { hayConexionParaClima() },
         sitioInicial = SitiosClima.buscar(prefs.sitioClima) ?: SitiosClima.LISTA.first(),
         alCambiarSitio = { prefs.sitioClima = it.nombre },
-    )
+    ).also {
+        it.origenSinConexion = {
+            if (esDemo && !onlineState.value) OrigenSinConexion.SIMULADA else OrigenSinConexion.DISPOSITIVO
+        }
+    }
 
     var modo by mutableStateOf(selectorModo.actual)
         private set
     private var usuarioDemo by mutableStateOf(prefs.user)
-    val user: String? get() = if (modo == ModoApp.OPERATIVO) USUARIO_OPERATIVO else usuarioDemo
+    private var sesionActiva by mutableStateOf(sesionOperativa.activa)
+    val user: String?
+        get() = when (modo) {
+            ModoApp.OPERATIVO -> if (sesionActiva) USUARIO_OPERATIVO else null
+            ModoApp.DEMO -> usuarioDemo
+        }
     val esDemo: Boolean get() = modo == ModoApp.DEMO
+    val haySesionOperativa: Boolean get() = sesionActiva
     private val onlineState = mutableStateOf(prefs.online)
     val online: Boolean get() = modo == ModoApp.OPERATIVO || onlineState.value
     var failNext by mutableStateOf(prefs.failNext)
         private set
     var usarApiReal by mutableStateOf(prefs.usarApiReal)
         private set
-    var screen by mutableStateOf(if (user == null) Screen.LOGIN else Screen.HOME)
+    private var pantalla by mutableStateOf(Screen.HOME)
+    val screen: Screen
+        get() = ControlAcceso.pantallaPermitida(modo, sesionActiva, usuarioDemo != null, pantalla)
+    var iniciandoSesion by mutableStateOf(false)
         private set
+    var errorInicioSesion by mutableStateOf<String?>(null)
+        private set
+    private var guardandoReporte = false
 
     /** Reporte en creación/edición (aún no confirmado). */
     var draft by mutableStateOf<Report?>(null)
@@ -99,10 +122,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     init {
         val savedDraft = repository.loadDraft()
-        savedDraft?.let { saved ->
-            draft = saved
-            if (user != null) {
-                screen = prefs.draftStep?.let { runCatching { Screen.valueOf(it) }.getOrNull() }
+        if (user != null) {
+            savedDraft?.let { saved ->
+                draft = saved
+                pantalla = prefs.draftStep?.let { runCatching { Screen.valueOf(it) }.getOrNull() }
                     ?.takeIf { it.isReportFlow } ?: Screen.FORM
                 notify("Se recuperó el reporte que estabas creando")
             }
@@ -124,15 +147,15 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     // ---------------- Sesión ----------------
 
     fun login(name: String) {
-        if (loggingIn) return
+        if (loggingIn || !esDemo) return
         loggingIn = true
         viewModelScope.launch {
-            delay(600) // validación simulada
+            delay(600)
             prefs.user = name
             usuarioDemo = name
             loggingIn = false
-            screen = if (draft != null) Screen.FORM else Screen.HOME
-            notify("Sesión ficticia iniciada como $name")
+            pantalla = if (draft != null) Screen.FORM else Screen.HOME
+            notify("Ingreso a la demostración como $name")
         }
     }
 
@@ -140,10 +163,53 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         if (!esDemo) return
         prefs.user = null
         usuarioDemo = null
-        screen = Screen.LOGIN
-        notify("Sesión simulada cerrada")
+        pantalla = Screen.LOGIN
+        notify("Sesión de demostración cerrada")
     }
 
+    fun iniciarSesionOperativa(usuario: String, contrasena: String) {
+        if (iniciandoSesion || esDemo) return
+        iniciandoSesion = true
+        errorInicioSesion = null
+        viewModelScope.launch {
+            val resultado = withContext(Dispatchers.Default) { sesionOperativa.iniciar(usuario, contrasena) }
+            iniciandoSesion = false
+            when (resultado) {
+                ResultadoInicioSesion.Correcto -> {
+                    sesionActiva = true
+                    draft = repository.loadDraft()
+                    pantalla = if (draft != null) Screen.FORM else Screen.HOME
+                    notify("Sesión iniciada")
+                }
+                ResultadoInicioSesion.CamposVacios -> errorInicioSesion = "Ingresa usuario y contraseña"
+                ResultadoInicioSesion.CredencialesIncorrectas -> errorInicioSesion = "Usuario o contraseña incorrectos"
+            }
+        }
+    }
+
+    fun cerrarSesionOperativa() {
+        if (esDemo) return
+        sesionOperativa.cerrar()
+        sesionActiva = false
+        draft = null
+        qualityConfirmed = false
+        detailId = null
+        confirmation = null
+        errorInicioSesion = null
+        pantalla = Screen.HOME
+        notify("Sesión cerrada. Tus reportes se conservan en el dispositivo")
+    }
+
+    private fun autorizado(): Boolean {
+        if (modo == ModoApp.OPERATIVO && sesionActiva && !sesionOperativa.activa) {
+            sesionActiva = false
+            draft = null
+            qualityConfirmed = false
+            detailId = null
+            notify("La sesión expiró. Inicia sesión nuevamente")
+        }
+        return user != null
+    }
 
     fun cambiarModo(nuevo: ModoApp) {
         if (nuevo == modo) return
@@ -155,12 +221,15 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             selectorModo.establecer(nuevo)
             repository.cambiarModo(nuevo)
             modo = nuevo
-            draft = repository.loadDraft()
             qualityConfirmed = false
             detailId = null
-            screen = if (user == null) Screen.LOGIN else Screen.HOME
+            confirmation = null
+            errorInicioSesion = null
+            pantalla = Screen.HOME
+            draft = if (autorizado()) repository.loadDraft() else null
             notify(
                 if (nuevo == ModoApp.DEMO) "Modo demostración activado: solo datos ficticios"
+                else if (user == null) "Modo operativo: inicia sesión para continuar"
                 else "Modo operativo activado"
             )
         }
@@ -169,7 +238,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     // ---------------- Navegación ----------------
 
     fun navigate(target: Screen) {
-        if (target == screen) return
+        if (!autorizado() || target.esIngreso || target == screen) return
         if (screen.isReportFlow && draft != null && !target.isReportFlow) {
             confirmation = Confirmation.LeaveDraft(target)
             return
@@ -178,20 +247,22 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             startNewReport()
             return
         }
-        screen = target
+        pantalla = target
     }
 
     private fun goTo(target: Screen) {
-        screen = target
+        pantalla = target
         if (target.isReportFlow) prefs.draftStep = target.name
     }
 
     fun openDetail(id: String) {
+        if (!autorizado()) return
         detailId = id
-        screen = Screen.DETAIL
+        pantalla = Screen.DETAIL
     }
 
     fun startNewReport() {
+        if (!autorizado()) return
         val current = draft
         if (current != null) {
             if (!screen.isReportFlow) notify("Retomando el reporte en curso")
@@ -206,6 +277,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun editReport(id: String) {
+        if (!autorizado()) return
         val report = repository.find(id) ?: return
         val current = draft
         if (current != null && current.id != id) {
@@ -335,6 +407,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      * EN_COLA lo agrega a la cola y, si [sendNow], inicia el envío.
      */
     fun saveDraft(status: ReportStatus, sendNow: Boolean = false, then: Screen? = null) {
+        if (!autorizado() || guardandoReporte) return
         val d = draft ?: return
         if (status == ReportStatus.EN_COLA) {
             if (d.type.isBlank() || d.process.isBlank()) {
@@ -346,41 +419,54 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 return
             }
         }
+        guardandoReporte = true
         viewModelScope.launch {
-            val existing = repository.find(d.id)
-            var report = d.copy(status = status, nextRetryAt = null, updatedAt = System.currentTimeMillis())
-            if (existing != null && existing.attempts > 0) {
-                // Corrección de un reporte que ya tuvo intentos de envío
-                report = report.copy(version = existing.version + 1)
-                report = report.withLog(
-                    "Corrección registrada: versión ${report.version} (se conserva el intento anterior)"
-                )
+            try {
+                guardarReporte(d, status, sendNow, then)
+            } finally {
+                guardandoReporte = false
             }
-            report = report.withLog(
-                when {
-                    status == ReportStatus.BORRADOR && existing != null -> "Borrador actualizado localmente"
-                    status == ReportStatus.BORRADOR -> "Borrador guardado localmente"
-                    !esDemo && existing != null -> "Reporte actualizado y guardado en la cola local"
-                    !esDemo -> "Reporte guardado localmente en la cola local"
-                    existing != null -> "Reporte actualizado y guardado en cola de envío"
-                    else -> "Reporte guardado localmente en cola de envío"
-                }
-            )
-            repository.upsert(report)
-            withContext(Dispatchers.IO) { store.prune(report.id, report.attachments) }
-            clearDraftState()
+        }
+    }
 
-            if (status == ReportStatus.BORRADOR) {
-                notify("Borrador guardado en el dispositivo")
-                screen = then ?: Screen.HOME
-            } else {
-                screen = then ?: Screen.QUEUE
-                when {
-                    !esDemo -> notify("Reporte guardado en el dispositivo (cola local)")
-                    !online -> notify("Sin conexión: el reporte quedó pendiente en la cola y se enviará al recuperar la conexión")
-                    sendNow -> send(report.id)
-                    else -> notify("Reporte agregado a la cola")
-                }
+    private suspend fun guardarReporte(d: Report, status: ReportStatus, sendNow: Boolean, then: Screen?) {
+        val existing = repository.find(d.id)
+        var report = d.copy(
+            status = status, nextRetryAt = null, updatedAt = System.currentTimeMillis(),
+            modo = existing?.modo ?: modo
+        )
+        if (existing != null && existing.attempts > 0) {
+            report = report.copy(version = existing.version + 1)
+            report = report.withLog(
+                "Corrección registrada: versión ${report.version} (se conserva el intento anterior)"
+            )
+        }
+        report = report.withLog(
+            when {
+                status == ReportStatus.BORRADOR && existing != null -> "Borrador actualizado localmente"
+                status == ReportStatus.BORRADOR -> "Borrador guardado localmente"
+                !esDemo && existing != null -> "Reporte actualizado y guardado localmente. Pendiente de sincronización remota"
+                !esDemo -> "Reporte guardado localmente. Pendiente de sincronización remota (sin destino configurado)"
+                existing != null -> "Reporte actualizado y guardado en cola de envío"
+                else -> "Reporte guardado localmente en cola de envío"
+            }
+        )
+        repository.upsert(report)
+        withContext(Dispatchers.IO) { store.prune(report.id, report.attachments) }
+        clearDraftState()
+
+        if (status == ReportStatus.BORRADOR) {
+            notify("Borrador guardado en el dispositivo. Todavía no se ha enviado")
+            pantalla = then ?: Screen.HOME
+        } else {
+            pantalla = then ?: Screen.QUEUE
+            when {
+                !esDemo -> notify(
+                    "Reporte guardado en el dispositivo. Pendiente de sincronización: aún no hay un servidor remoto configurado"
+                )
+                !online -> notify("Sin conexión: el reporte quedó pendiente en la cola y se enviará al recuperar la conexión")
+                sendNow -> send(report.id)
+                else -> notify("Reporte agregado a la cola")
             }
         }
     }
@@ -401,7 +487,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 else store.deleteReportFiles(d.id)
             }
             clearDraftState()
-            screen = then
+            pantalla = then
             notify("Cambios descartados")
         }
     }
@@ -409,8 +495,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     // ---------------- Envío y sincronización ----------------
 
     fun send(id: String) {
+        if (!autorizado()) return
         if (!esDemo) {
-            notify("El envío remoto solo está disponible en el modo demostración")
+            notify("Sin servidor remoto configurado: el reporte permanece guardado en el dispositivo, pendiente de sincronización")
             return
         }
         if (!online) {
@@ -419,7 +506,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
         // Si ya hay un envío esperando el próximo reintento, se adelanta
         if (syncJobs[id]?.isActive == true) {
-            retrySignals[id]?.trySend(Unit)
+            val esperandoReintento = repository.find(id)?.let {
+                it.status == ReportStatus.ERROR && it.nextRetryAt != null
+            } == true
+            if (esperandoReintento) retrySignals[id]?.trySend(Unit)
+            else notify("El envío de este reporte ya está en curso")
             return
         }
         val signal = Channel<Unit>(Channel.CONFLATED)
@@ -435,8 +526,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun sendAll() {
+        if (!autorizado()) return
         if (!esDemo) {
-            notify("El envío remoto solo está disponible en el modo demostración")
+            notify("Sin servidor remoto configurado: los reportes permanecen guardados en el dispositivo, pendientes de sincronización")
             return
         }
         if (!online) {
@@ -496,7 +588,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                         it.copy(
                             status = ReportStatus.SINCRONIZADO, syncedAt = now,
                             receipt = result.receipt, nextRetryAt = null
-                        ).withLog("${result.message}. Comprobante ${result.receipt} (${api.descripcion})")
+                        ).withLog(
+                            "Envío simulado completado mediante ${api.descripcion}. Comprobante ${result.receipt}. " +
+                                "No se almacenó en un servidor empresarial"
+                        )
                     }
                     // Tras la confirmación se liberan los archivos locales (se conserva la metadata)
                     withContext(Dispatchers.IO) { store.deleteReportFiles(id) }
@@ -504,7 +599,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                         r.copy(attachments = r.attachments.map { it.copy(path = null) })
                             .withLog("Archivos locales liberados; se conserva metadata e historial")
                     }
-                    notify("Reporte sincronizado mediante ${api.descripcion}")
+                    notify(
+                        if (usarApiReal) "Envío simulado completado. JSONPlaceholder es una API de pruebas y no almacena el reporte"
+                        else "Envío simulado completado. Los datos no salieron del dispositivo"
+                    )
                     return
                 }
 
@@ -543,6 +641,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     // ---------------- Conectividad y controles demo ----------------
 
+    private fun hayConexionParaClima(): Boolean =
+        conectividad.hayRed() && (modo == ModoApp.OPERATIVO || onlineState.value)
+
     fun toggleOnline() = setOnline(!onlineState.value)
 
     fun setOnline(value: Boolean) {
@@ -578,6 +679,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun requestDelete(id: String) {
+        if (!autorizado()) return
         val report = repository.find(id) ?: return
         if (!report.status.isDeletable) {
             notify("Solo se pueden eliminar reportes en Borrador o En cola")
@@ -621,7 +723,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             withContext(Dispatchers.IO) { store.deleteReportFiles(id) }
             if (detailId == id) {
                 detailId = null
-                screen = Screen.HISTORY
+                pantalla = Screen.HISTORY
             }
             notify("Reporte eliminado")
         }
@@ -641,8 +743,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                     createdAt = created,
                     user = user.orEmpty(),
                     installId = installId,
-                    type = Catalogs.TIPOS[i],
-                    process = Catalogs.PROCESOS[i],
+                    type = Catalogs.tipos(ModoApp.DEMO)[i],
+                    process = Catalogs.procesos(ModoApp.DEMO)[i],
                     area = "Área ficticia ${i + 1}",
                     shift = "Día",
                     notes = "Documento y datos sintéticos de demostración.",
@@ -692,13 +794,13 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             onlineState.value = prefs.online
             failNext = prefs.failNext
             usarApiReal = prefs.usarApiReal
-            screen = Screen.LOGIN
+            pantalla = Screen.HOME
             notify("Demostración restablecida")
         }
     }
 
     companion object {
-        const val USUARIO_OPERATIVO = "Operador local"
+        const val USUARIO_OPERATIVO = VerificadorCredencialesLocales.USUARIO_DEMOSTRACION
         const val MAX_ATTEMPTS = 4
         /** Pausas entre reintentos automáticos: 5, 15 y 30 segundos. */
         val BACKOFF_MS = longArrayOf(5_000, 15_000, 30_000)

@@ -31,7 +31,7 @@ import com.example.vitairosapp.ui.viewmodel.AppViewModel
 internal fun Header(vm: AppViewModel) {
     val title = when {
         vm.screen == Screen.FORM && vm.isEditing -> "Editar reporte"
-        vm.screen == Screen.QUEUE && !vm.esDemo -> "Cola local"
+        vm.screen == Screen.QUEUE && !vm.esDemo -> "Pendientes de sincronización"
         else -> vm.screen.title
     }
     Box(
@@ -49,9 +49,9 @@ internal fun Header(vm: AppViewModel) {
                     Text("MODO DEMOSTRACIÓN · datos ficticios", color = HeaderMuted, fontSize = 11.sp)
                 }
             }
-            if (vm.esDemo && vm.screen != Screen.LOGIN) {
+            if (vm.esDemo && !vm.screen.esIngreso) {
                 Text(
-                    if (vm.online) "◉ Online" else "◌ Sin red",
+                    if (vm.online) "◉ Red simulada: sí" else "◌ Red simulada: no",
                     modifier = Modifier
                         .clip(RoundedCornerShape(12.dp))
                         .background(if (vm.online) OnlinePill else Danger)
