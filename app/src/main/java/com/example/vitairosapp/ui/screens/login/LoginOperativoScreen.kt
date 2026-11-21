@@ -33,7 +33,6 @@ import com.example.vitairosapp.R
 import com.example.vitairosapp.data.model.ModoApp
 import com.example.vitairosapp.ui.components.ButtonStyle
 import com.example.vitairosapp.ui.components.FieldLabel
-import com.example.vitairosapp.ui.components.Hint
 import com.example.vitairosapp.ui.components.Notice
 import com.example.vitairosapp.ui.components.NoticeKind
 import com.example.vitairosapp.ui.components.ScreenColumn
@@ -103,10 +102,6 @@ fun LoginOperativoScreen(vm: AppViewModel) {
                 onClick = intentarIngreso,
                 modifier = Modifier.fillMaxWidth(),
                 enabled = !vm.iniciandoSesion
-            )
-            Hint(
-                "Credenciales de demostración local para el portafolio: usuario «operador», contraseña «12345». " +
-                    "No es autenticación corporativa ni seguridad empresarial."
             )
         }
         VButton(
