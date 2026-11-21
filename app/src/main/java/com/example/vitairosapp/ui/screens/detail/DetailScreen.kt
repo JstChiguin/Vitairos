@@ -92,7 +92,7 @@ fun DetailScreen(vm: AppViewModel, reports: List<Report>) {
         }
 
         val canEdit = report.status.isEditable
-        val canSend = report.status == ReportStatus.EN_COLA || report.status == ReportStatus.ERROR
+        val canSend = vm.esDemo && (report.status == ReportStatus.EN_COLA || report.status == ReportStatus.ERROR)
         val canDelete = report.status.isDeletable
         if (canEdit || canSend || canDelete) {
             ActionRow {

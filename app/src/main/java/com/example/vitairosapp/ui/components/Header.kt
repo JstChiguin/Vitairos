@@ -29,7 +29,11 @@ import com.example.vitairosapp.ui.viewmodel.AppViewModel
 
 @Composable
 internal fun Header(vm: AppViewModel) {
-    val title = if (vm.screen == Screen.FORM && vm.isEditing) "Editar reporte" else vm.screen.title
+    val title = when {
+        vm.screen == Screen.FORM && vm.isEditing -> "Editar reporte"
+        vm.screen == Screen.QUEUE && !vm.esDemo -> "Cola local"
+        else -> vm.screen.title
+    }
     Box(
         Modifier
             .fillMaxWidth()
@@ -41,8 +45,11 @@ internal fun Header(vm: AppViewModel) {
             Column(Modifier.weight(1f)) {
                 Text("VITAIROS INDUSTRIAL AI", color = HeaderMuted, fontSize = 11.sp, letterSpacing = 2.sp)
                 Text(title, color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+                if (vm.esDemo) {
+                    Text("MODO DEMOSTRACIÓN · datos ficticios", color = HeaderMuted, fontSize = 11.sp)
+                }
             }
-            if (vm.screen != Screen.LOGIN) {
+            if (vm.esDemo && vm.screen != Screen.LOGIN) {
                 Text(
                     if (vm.online) "◉ Online" else "◌ Sin red",
                     modifier = Modifier

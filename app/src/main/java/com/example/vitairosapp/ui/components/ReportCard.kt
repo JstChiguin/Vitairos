@@ -25,6 +25,7 @@ import com.example.vitairosapp.util.formatTime
 fun ReportCard(
     report: Report,
     online: Boolean,
+    modoDemo: Boolean,
     onDetail: () -> Unit,
     onEdit: () -> Unit,
     onSend: () -> Unit,
@@ -51,7 +52,7 @@ fun ReportCard(
         val retryAt = report.nextRetryAt
         if (report.status == ReportStatus.ERROR && retryAt != null) {
             Text("Reintento automático a las ${formatTime(retryAt)}", color = CopperDark, fontSize = 12.5.sp)
-        } else if (report.status == ReportStatus.EN_COLA && !online) {
+        } else if (modoDemo && report.status == ReportStatus.EN_COLA && !online) {
             Text("Pendiente: se enviará al recuperar la conexión", color = CopperDark, fontSize = 12.5.sp)
         }
         Spacer(Modifier.height(2.dp))
@@ -60,9 +61,9 @@ fun ReportCard(
             if (report.status.isEditable) {
                 VButton("Editar", onEdit, Modifier.weight(1f), ButtonStyle.Ghost)
             }
-            if (report.status == ReportStatus.EN_COLA) {
+            if (modoDemo && report.status == ReportStatus.EN_COLA) {
                 VButton("Enviar", onSend, Modifier.weight(1f), ButtonStyle.Primary)
-            } else if (report.status == ReportStatus.ERROR) {
+            } else if (modoDemo && report.status == ReportStatus.ERROR) {
                 VButton("Reintentar", onSend, Modifier.weight(1f), ButtonStyle.Primary)
             }
         }

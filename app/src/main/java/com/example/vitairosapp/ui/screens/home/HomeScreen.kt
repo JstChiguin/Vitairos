@@ -62,29 +62,36 @@ fun HomeScreen(vm: AppViewModel, reports: List<Report>) {
 
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             MetricTile("${reports.size}", "Total", Modifier.weight(1f))
-            MetricTile("${reports.count { it.status.isPending }}", "Pendientes", Modifier.weight(1f))
-            MetricTile("${reports.count { it.status == ReportStatus.SINCRONIZADO }}", "Sincronizados", Modifier.weight(1f))
+            if (vm.esDemo) {
+                MetricTile("${reports.count { it.status.isPending }}", "Pendientes", Modifier.weight(1f))
+                MetricTile("${reports.count { it.status == ReportStatus.SINCRONIZADO }}", "Sincronizados", Modifier.weight(1f))
+            } else {
+                MetricTile("${reports.count { it.status == ReportStatus.BORRADOR }}", "Borradores", Modifier.weight(1f))
+                MetricTile("${reports.count { it.status == ReportStatus.EN_COLA }}", "En cola local", Modifier.weight(1f))
+            }
         }
 
         SectionTitle("Condiciones meteorológicas", Modifier.padding(top = 8.dp))
         TarjetaClima(vm.gestorClima)
         LaunchedEffect(vm.online) { vm.gestorClima.consultar() }
 
-        SectionTitle("Conectividad de demostración", Modifier.padding(top = 8.dp))
-        VCard {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    Text(
-                        if (vm.online) "$GREEN_DOT Conectado" else "$RED_DOT Sin conexión",
-                        color = Ink, fontSize = 16.sp, fontWeight = FontWeight.Bold
+        if (vm.esDemo) {
+            SectionTitle("Conectividad de demostración", Modifier.padding(top = 8.dp))
+            VCard {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            if (vm.online) "$GREEN_DOT Conectado" else "$RED_DOT Sin conexión",
+                            color = Ink, fontSize = 16.sp, fontWeight = FontWeight.Bold
+                        )
+                        Text("Control de red simulado", color = Muted, fontSize = 11.5.sp)
+                    }
+                    VButton(
+                        if (vm.online) "Desconectar" else "Reconectar",
+                        vm::toggleOnline,
+                        style = ButtonStyle.Secondary
                     )
-                    Text("Control de red simulado", color = Muted, fontSize = 11.5.sp)
                 }
-                VButton(
-                    if (vm.online) "Desconectar" else "Reconectar",
-                    vm::toggleOnline,
-                    style = ButtonStyle.Secondary
-                )
             }
         }
 
@@ -95,7 +102,7 @@ fun HomeScreen(vm: AppViewModel, reports: List<Report>) {
         } else {
             latest.forEach { report ->
                 ReportCard(
-                    report, vm.online,
+                    report, vm.online, vm.esDemo,
                     onDetail = { vm.openDetail(report.id) },
                     onEdit = { vm.editReport(report.id) },
                     onSend = { vm.send(report.id) }

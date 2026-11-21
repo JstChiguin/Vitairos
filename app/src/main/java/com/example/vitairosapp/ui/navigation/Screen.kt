@@ -9,7 +9,7 @@ enum class Screen(val title: String) {
     QUEUE("Cola de envíos"),
     HISTORY("Historial"),
     DETAIL("Detalle y trazabilidad"),
-    SETTINGS("Configuración demo");
+    SETTINGS("Ajustes");
 
     val isReportFlow: Boolean get() = this == FORM || this == FILES || this == REVIEW
 }

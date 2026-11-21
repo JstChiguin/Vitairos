@@ -11,6 +11,7 @@ android {
     }
 
     defaultConfig {
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         applicationId = "com.example.vitairosapp"
         minSdk = 26
         targetSdk = 37
@@ -33,8 +34,23 @@ android {
     buildFeatures {
         compose = true
     }
+    sourceSets {
+        getByName("androidTest").assets.directories.add("$projectDir/schemas")
+    }
     testOptions {
         unitTests.isReturnDefaultValues = true
+    }
+}
+
+ksp {
+    arg("room.schemaLocation", "$projectDir/schemas")
+}
+
+configurations.matching { it.name.contains("AndroidTest") }.configureEach {
+    resolutionStrategy.eachDependency {
+        if (requested.group == "org.jetbrains.kotlinx" && requested.name.startsWith("kotlinx-serialization")) {
+            useVersion("1.9.0")
+        }
     }
 }
 
@@ -58,4 +74,8 @@ dependencies {
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.org.json)
+    androidTestImplementation(libs.androidx.test.ext.junit)
+    androidTestImplementation(libs.androidx.test.runner)
+    androidTestImplementation(libs.androidx.room.testing)
+    androidTestImplementation(libs.kotlinx.serialization.json)
 }

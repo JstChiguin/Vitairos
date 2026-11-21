@@ -21,6 +21,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.vitairosapp.R
 import com.example.vitairosapp.data.catalog.Catalogs
+import com.example.vitairosapp.data.model.ModoApp
+import com.example.vitairosapp.ui.components.ButtonStyle
 import com.example.vitairosapp.ui.components.FieldLabel
 import com.example.vitairosapp.ui.components.Hint
 import com.example.vitairosapp.ui.components.Notice
@@ -47,7 +49,7 @@ fun LoginScreen(vm: AppViewModel) {
         Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
             Text("VITAIROS Industrial AI", color = Ink, fontSize = 24.sp, fontWeight = FontWeight.Bold)
             Text(
-                "Captura de reportes operacionales · MVP académico",
+                "Captura de reportes operacionales",
                 color = Muted, fontSize = 12.5.sp, textAlign = TextAlign.Center
             )
         }
@@ -69,7 +71,13 @@ fun LoginScreen(vm: AppViewModel) {
                 enabled = !vm.loggingIn
             )
         }
+        VButton(
+            "Salir de la demostración",
+            { vm.cambiarModo(ModoApp.OPERATIVO) },
+            Modifier.fillMaxWidth(),
+            ButtonStyle.Ghost
+        )
         Spacer(Modifier.height(8.dp))
-        Notice("Prototipo académico DSY1105. Datos, procesos y respuestas de envío son ficticios.")
+        Notice("Modo demostración: datos, procesos y respuestas de envío son ficticios.")
     }
 }

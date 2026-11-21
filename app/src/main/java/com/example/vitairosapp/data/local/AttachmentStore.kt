@@ -255,12 +255,6 @@ class AttachmentStore(private val context: Context) {
         File(rootDir, reportId).deleteRecursively()
     }
 
-    fun deleteAll() {
-        rootDir.deleteRecursively()
-        rootDir.mkdirs()
-        cameraDir.deleteRecursively()
-    }
-
     companion object {
         const val MAX_BYTES = 10L * 1024 * 1024
         const val MAX_DIMENSION = 1920

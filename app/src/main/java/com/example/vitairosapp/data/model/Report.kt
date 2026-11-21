@@ -22,6 +22,7 @@ data class Report(
     val receipt: String? = null,
     val nextRetryAt: Long? = null,
     val updatedAt: Long = createdAt,
+    val modo: ModoApp = ModoApp.OPERATIVO,
 ) {
     fun withLog(message: String): Report =
         copy(log = log + LogEntry(message = message), updatedAt = System.currentTimeMillis())

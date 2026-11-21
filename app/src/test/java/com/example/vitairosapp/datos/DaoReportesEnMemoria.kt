@@ -6,13 +6,14 @@ import com.example.vitairosapp.data.local.db.entity.DraftEntity
 import com.example.vitairosapp.data.local.db.entity.LogEntryEntity
 import com.example.vitairosapp.data.local.db.entity.ReportEntity
 import com.example.vitairosapp.data.local.db.entity.ReportWithDetails
+import com.example.vitairosapp.data.model.ModoApp
 
 class DaoReportesEnMemoria : ReportDao {
 
     private val reportes = linkedMapOf<String, ReportEntity>()
     private val adjuntos = mutableListOf<AttachmentEntity>()
     private val eventos = mutableListOf<LogEntryEntity>()
-    private var borrador: DraftEntity? = null
+    private val borradores = mutableMapOf<Int, DraftEntity>()
 
     override suspend fun getAll(): List<ReportWithDetails> =
         reportes.values.sortedByDescending { it.createdAt }.map { reporte ->
@@ -51,19 +52,18 @@ class DaoReportesEnMemoria : ReportDao {
         deleteLog(id)
     }
 
-    override suspend fun deleteAll() {
-        reportes.clear()
-        adjuntos.clear()
-        eventos.clear()
+    override suspend fun deleteAllByModo(modo: ModoApp) {
+        val ids = reportes.values.filter { it.modo == modo }.map { it.id }
+        ids.forEach { delete(it) }
     }
 
-    override suspend fun getDraft(): DraftEntity? = borrador
+    override suspend fun getDraft(slot: Int): DraftEntity? = borradores[slot]
 
     override suspend fun saveDraft(draft: DraftEntity) {
-        borrador = draft
+        borradores[draft.slot] = draft
     }
 
-    override suspend fun clearDraft() {
-        borrador = null
+    override suspend fun clearDraft(slot: Int) {
+        borradores.remove(slot)
     }
 }
