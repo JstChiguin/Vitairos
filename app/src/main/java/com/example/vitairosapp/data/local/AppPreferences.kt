@@ -2,12 +2,23 @@ package com.example.vitairosapp.data.local
 
 import android.content.Context
 import androidx.core.content.edit
+import com.example.vitairosapp.data.model.ModoApp
 import java.util.Locale
 import java.util.UUID
 
-class AppPreferences(context: Context) {
+class AppPreferences(context: Context) : AlmacenModo, AlmacenSesion {
 
     private val prefs = context.getSharedPreferences("vitairos_prefs", Context.MODE_PRIVATE)
+
+    override var modo: ModoApp
+        get() = ModoApp.desdeNombre(prefs.getString("modo", null))
+        set(value) = prefs.edit { putString("modo", value.name) }
+
+    override var inicioSesionMillis: Long?
+        get() = prefs.getLong("inicio_sesion_operativa", 0L).takeIf { it > 0L }
+        set(value) = prefs.edit {
+            if (value == null) remove("inicio_sesion_operativa") else putLong("inicio_sesion_operativa", value)
+        }
 
     var user: String?
         get() = prefs.getString("user", null)
@@ -31,8 +42,10 @@ class AppPreferences(context: Context) {
 
     /** Paso del flujo de creación en que quedó el borrador (FORM, FILES o REVIEW). */
     var draftStep: String?
-        get() = prefs.getString("draft_step", null)
-        set(value) = prefs.edit { putString("draft_step", value) }
+        get() = prefs.getString(claveBorrador(modo), null)
+        set(value) = prefs.edit { putString(claveBorrador(modo), value) }
+
+    private fun claveBorrador(modo: ModoApp) = "draft_step_${modo.name}"
 
     /** Identificador estable de esta instalación, generado la primera vez. */
     val installId: String
@@ -50,7 +63,7 @@ class AppPreferences(context: Context) {
             remove("online")
             remove("fail_next")
             remove("usar_api_real")
-            remove("draft_step")
+            remove(claveBorrador(ModoApp.DEMO))
         }
     }
 

@@ -1,7 +1,9 @@
 package com.example.vitairosapp.data.local.db.entity
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import com.example.vitairosapp.data.model.ModoApp
 import com.example.vitairosapp.data.model.ReportStatus
 
 /** Tabla `reports`: datos principales de cada reporte guardado. */
@@ -23,4 +25,5 @@ data class ReportEntity(
     val receipt: String?,
     val nextRetryAt: Long?,
     val updatedAt: Long,
+    @ColumnInfo(defaultValue = "OPERATIVO") val modo: ModoApp = ModoApp.OPERATIVO,
 )

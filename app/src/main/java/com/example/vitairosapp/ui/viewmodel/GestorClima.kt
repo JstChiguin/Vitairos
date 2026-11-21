@@ -19,6 +19,8 @@ class GestorClima(
     private val alCambiarSitio: (SitioClima) -> Unit,
 ) {
 
+    var origenSinConexion: () -> OrigenSinConexion = { OrigenSinConexion.DISPOSITIVO }
+
     private val estadoInterno = MutableStateFlow<EstadoClima>(EstadoClima.SinConsultar)
     val estado: StateFlow<EstadoClima> = estadoInterno.asStateFlow()
 
@@ -31,7 +33,7 @@ class GestorClima(
     fun consultar() {
         consultaEnCurso?.cancel()
         if (!estaEnLinea()) {
-            estadoInterno.value = EstadoClima.SinConexion(ultimaLectura)
+            estadoInterno.value = EstadoClima.SinConexion(ultimaLectura, origenSinConexion())
             return
         }
         estadoInterno.value = EstadoClima.Cargando
@@ -42,7 +44,7 @@ class GestorClima(
                     ultimaLectura = resultado.condiciones
                     EstadoClima.Disponible(resultado.condiciones)
                 }
-                ResultadoClima.SinConexion -> EstadoClima.SinConexion(ultimaLectura)
+                ResultadoClima.SinConexion -> EstadoClima.SinConexion(ultimaLectura, OrigenSinConexion.DISPOSITIVO)
                 is ResultadoClima.Fallo -> EstadoClima.Error(resultado.mensaje, ultimaLectura)
             }
         }

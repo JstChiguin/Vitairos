@@ -7,12 +7,14 @@ import com.example.vitairosapp.data.remote.ApiClima
 import com.example.vitairosapp.data.remote.ResultadoClima
 import com.example.vitairosapp.ui.viewmodel.EstadoClima
 import com.example.vitairosapp.ui.viewmodel.GestorClima
+import com.example.vitairosapp.ui.viewmodel.OrigenSinConexion
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -195,6 +197,92 @@ class GestorClimaTest {
         advanceUntilIdle()
 
         assertEquals(EstadoClima.Disponible(lecturaNueva), entorno.gestor.estado.value)
+    }
+
+    @Test
+    fun `actualizar sin conexion cambia el estado de inmediato sin cambiar de ciudad`() = runTest {
+        var enLinea = true
+        val entorno = crear(enLinea = { enLinea })
+        entorno.gestor.consultar()
+        advanceUntilIdle()
+        assertTrue(entorno.gestor.estado.value.esLecturaActual)
+
+        enLinea = false
+        entorno.gestor.consultar()
+
+        assertEquals(EstadoClima.SinConexion(lectura), entorno.gestor.estado.value)
+        assertEquals(sitioInicial, entorno.gestor.sitio.value)
+    }
+
+    @Test
+    fun `la lectura anterior sin conexion no se presenta como actual`() = runTest {
+        var enLinea = true
+        val entorno = crear(enLinea = { enLinea })
+        entorno.gestor.consultar()
+        advanceUntilIdle()
+
+        enLinea = false
+        entorno.gestor.consultar()
+
+        val estado = entorno.gestor.estado.value
+        assertEquals(lectura, estado.lectura)
+        assertFalse(estado.esLecturaActual)
+    }
+
+    @Test
+    fun `una lectura reciente si se presenta como actual`() = runTest {
+        val entorno = crear()
+        entorno.gestor.consultar()
+        advanceUntilIdle()
+
+        assertTrue(entorno.gestor.estado.value.esLecturaActual)
+    }
+
+    @Test
+    fun `sin conexion no se consulta la api aunque haya lectura previa`() = runTest {
+        var enLinea = true
+        val entorno = crear(enLinea = { enLinea })
+        entorno.gestor.consultar()
+        advanceUntilIdle()
+
+        enLinea = false
+        entorno.gestor.consultar()
+        advanceUntilIdle()
+
+        assertEquals(1, entorno.api.sitiosConsultados.size)
+    }
+
+    @Test
+    fun `la conexion simulada desactivada se distingue de la falta de red del dispositivo`() = runTest {
+        var origen = OrigenSinConexion.SIMULADA
+        val api = ApiClimaFalsa(ResultadoClima.Exitoso(lectura))
+        val gestor = GestorClima(api, this, { false }, sitioInicial) { }
+        gestor.origenSinConexion = { origen }
+        gestor.consultar()
+        assertEquals(EstadoClima.SinConexion(null, OrigenSinConexion.SIMULADA), gestor.estado.value)
+
+        origen = OrigenSinConexion.DISPOSITIVO
+        gestor.consultar()
+        assertEquals(EstadoClima.SinConexion(null, OrigenSinConexion.DISPOSITIVO), gestor.estado.value)
+    }
+
+    @Test
+    fun `al recuperar la conexion se puede consultar nuevamente`() = runTest {
+        var enLinea = false
+        val entorno = crear(respuesta = ResultadoClima.Exitoso(lecturaNueva), enLinea = { enLinea })
+        entorno.gestor.consultar()
+        assertEquals(EstadoClima.SinConexion(null), entorno.gestor.estado.value)
+
+        enLinea = true
+        entorno.gestor.consultar()
+        advanceUntilIdle()
+
+        assertEquals(EstadoClima.Disponible(lecturaNueva), entorno.gestor.estado.value)
+    }
+
+    @Test
+    fun `el mensaje sin conexion es el acordado`() {
+        assertEquals("Sin conexión. No se puede actualizar el clima", EstadoClima.MENSAJE_SIN_CONEXION)
     }
 
     @Test

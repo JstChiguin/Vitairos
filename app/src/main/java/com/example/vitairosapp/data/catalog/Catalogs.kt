@@ -1,20 +1,31 @@
 package com.example.vitairosapp.data.catalog
 
-/** Catálogos provisionales: VITAIROS entregará o validará los definitivos. */
+import com.example.vitairosapp.data.model.ModoApp
+
 object Catalogs {
-    val TIPOS = listOf(
-        "Reporte de turno (demostración)",
-        "Registro de mantenimiento (demostración)",
-        "Inspección operacional (demostración)",
-        "Registro documental (demostración)",
+    private val TIPOS_OPERATIVOS = listOf(
+        "Reporte de turno",
+        "Registro de mantenimiento",
+        "Inspección operacional",
+        "Registro documental",
     )
 
-    val PROCESOS = listOf(
-        "Operación (demostración)",
-        "Mantenimiento (demostración)",
-        "Seguridad operacional (demostración)",
-        "Control documental (demostración)",
+    private val PROCESOS_OPERATIVOS = listOf(
+        "Operación",
+        "Mantenimiento",
+        "Seguridad operacional",
+        "Control documental",
     )
+
+    private val TIPOS_DEMOSTRACION = TIPOS_OPERATIVOS.map { "$it (demostración)" }
+
+    private val PROCESOS_DEMOSTRACION = PROCESOS_OPERATIVOS.map { "$it (demostración)" }
+
+    fun tipos(modo: ModoApp): List<String> =
+        if (modo == ModoApp.DEMO) TIPOS_DEMOSTRACION else TIPOS_OPERATIVOS
+
+    fun procesos(modo: ModoApp): List<String> =
+        if (modo == ModoApp.DEMO) PROCESOS_DEMOSTRACION else PROCESOS_OPERATIVOS
 
     val TURNOS = listOf("Día", "Noche", "Otro")
 

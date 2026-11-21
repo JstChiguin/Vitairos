@@ -31,6 +31,7 @@ import com.example.vitairosapp.ui.navigation.Screen
 import com.example.vitairosapp.ui.screens.detail.DetailScreen
 import com.example.vitairosapp.ui.screens.history.HistoryScreen
 import com.example.vitairosapp.ui.screens.home.HomeScreen
+import com.example.vitairosapp.ui.screens.login.LoginOperativoScreen
 import com.example.vitairosapp.ui.screens.login.LoginScreen
 import com.example.vitairosapp.ui.screens.queue.QueueScreen
 import com.example.vitairosapp.ui.screens.report.AttachmentsScreen
@@ -71,7 +72,7 @@ private fun AppContent(vm: AppViewModel) {
     }
 
     // Botón atrás del sistema: retrocede dentro del flujo antes de salir
-    BackHandler(enabled = vm.screen != Screen.LOGIN && vm.screen != Screen.HOME) {
+    BackHandler(enabled = !vm.screen.esIngreso && vm.screen != Screen.HOME) {
         when (vm.screen) {
             Screen.FILES -> vm.backToForm()
             Screen.REVIEW -> vm.backToAttachments()
@@ -84,7 +85,7 @@ private fun AppContent(vm: AppViewModel) {
         containerColor = Bone,
         topBar = { Header(vm) },
         bottomBar = {
-            if (vm.screen != Screen.LOGIN) {
+            if (!vm.screen.esIngreso) {
                 val pending = reports.count {
                     it.status == ReportStatus.EN_COLA || it.status == ReportStatus.ERROR
                 }
@@ -109,6 +110,7 @@ private fun AppContent(vm: AppViewModel) {
         ) {
             when (vm.screen) {
                 Screen.LOGIN -> LoginScreen(vm)
+                Screen.LOGIN_OPERATIVO -> LoginOperativoScreen(vm)
                 Screen.HOME -> HomeScreen(vm, reports)
                 Screen.FORM -> ReportFormScreen(vm)
                 Screen.FILES -> AttachmentsScreen(vm)

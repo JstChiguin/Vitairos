@@ -20,37 +20,45 @@ import com.example.vitairosapp.ui.viewmodel.AppViewModel
 
 @Composable
 fun QueueScreen(vm: AppViewModel, reports: List<Report>) {
-    val queue = reports.filter { it.status != ReportStatus.SINCRONIZADO }.sortedByDescending { it.createdAt }
+    val queue = reports.filter { it.status.isPending }.sortedByDescending { it.createdAt }
     val sendable = reports.count { it.status == ReportStatus.EN_COLA || it.status == ReportStatus.ERROR }
     ScreenColumn {
-        if (vm.online) {
-            Notice("$GREEN_DOT Conectividad simulada disponible. Los reportes en cola pueden enviarse.", NoticeKind.Success)
+        if (vm.esDemo) {
+            if (vm.online) {
+                Notice("$GREEN_DOT Conectividad simulada disponible. Los reportes en cola pueden enviarse.", NoticeKind.Success)
+            } else {
+                Notice(
+                    "$RED_DOT Sin conexión simulada. Los reportes permanecen almacenados localmente y se enviarán automáticamente al reconectar.",
+                    NoticeKind.Danger
+                )
+            }
+            ActionRow {
+                VButton(
+                    if (vm.online) "Simular desconexión" else "Recuperar conexión",
+                    vm::toggleOnline, Modifier.weight(1f), ButtonStyle.Secondary
+                )
+                VButton(
+                    "Enviar pendientes ($sendable)", vm::sendAll, Modifier.weight(1f),
+                    enabled = vm.online
+                )
+            }
+            Hint(
+                "Demostración: envío inicial + 3 reintentos automáticos con pausas de 5, 15 y 30 segundos; " +
+                    "después queda en Error con reintento manual. Puedes forzar un error en Ajustes."
+            )
         } else {
             Notice(
-                "$RED_DOT Sin conexión simulada. Los reportes permanecen almacenados localmente y se enviarán automáticamente al reconectar.",
-                NoticeKind.Danger
+                "Estos reportes están guardados en el dispositivo y pendientes de sincronización. " +
+                    "Aún no hay un servidor remoto configurado, por lo que ninguno figura como enviado.",
+                NoticeKind.Info
             )
         }
-        ActionRow {
-            VButton(
-                if (vm.online) "Simular desconexión" else "Recuperar conexión",
-                vm::toggleOnline, Modifier.weight(1f), ButtonStyle.Secondary
-            )
-            VButton(
-                "Enviar pendientes ($sendable)", vm::sendAll, Modifier.weight(1f),
-                enabled = vm.online
-            )
-        }
-        Hint(
-            "Demostración: envío inicial + 3 reintentos automáticos con pausas de 5, 15 y 30 segundos; " +
-                "después queda en Error con reintento manual. Puedes forzar un error en Ajustes."
-        )
         if (queue.isEmpty()) {
-            EmptyState("✓", "No hay reportes pendientes.")
+            EmptyState("✓", if (vm.esDemo) "No hay reportes pendientes de envío." else "No hay reportes pendientes de sincronización.")
         } else {
             queue.forEach { report ->
                 ReportCard(
-                    report, vm.online,
+                    report, vm.online, vm.esDemo,
                     onDetail = { vm.openDetail(report.id) },
                     onEdit = { vm.editReport(report.id) },
                     onSend = { vm.send(report.id) }

@@ -57,7 +57,7 @@ fun HistoryScreen(vm: AppViewModel, reports: List<Report>) {
         } else {
             visible.forEach { report ->
                 ReportCard(
-                    report, vm.online,
+                    report, vm.online, vm.esDemo,
                     onDetail = { vm.openDetail(report.id) },
                     onEdit = { vm.editReport(report.id) },
                     onSend = { vm.send(report.id) }

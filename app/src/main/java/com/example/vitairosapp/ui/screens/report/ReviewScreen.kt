@@ -49,7 +49,7 @@ fun ReviewScreen(vm: AppViewModel) {
         VCard {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text("Resumen del reporte", Modifier.weight(1f), color = Ink, fontSize = 18.sp, fontWeight = FontWeight.Bold)
-                StatusPill(draft.status)
+                StatusPill(draft.status, draft.etiquetaEstado)
             }
             Divider()
             InfoLine("Tipo", draft.type)
@@ -79,7 +79,7 @@ fun ReviewScreen(vm: AppViewModel) {
             )
         }
 
-        if (!vm.online) {
+        if (vm.esDemo && !vm.online) {
             Notice(
                 "Sin conexión: al enviar, el reporte quedará guardado y pendiente en la cola. " +
                     "Se enviará automáticamente al recuperar la conexión.",
@@ -87,23 +87,39 @@ fun ReviewScreen(vm: AppViewModel) {
             )
         }
 
-        ActionRow {
-            VButton("← Corregir", vm::backToAttachments, Modifier.weight(1f), ButtonStyle.Secondary)
+        if (vm.esDemo) {
+            ActionRow {
+                VButton("← Corregir", vm::backToAttachments, Modifier.weight(1f), ButtonStyle.Secondary)
+                VButton(
+                    if (vm.online) "Enviar ahora" else "Guardar pendiente",
+                    {
+                        if (vm.requireQualityConfirmation()) vm.saveDraft(ReportStatus.EN_COLA, sendNow = true)
+                    },
+                    Modifier.weight(1f),
+                    ButtonStyle.Copper
+                )
+            }
             VButton(
-                if (vm.online) "Enviar ahora" else "Guardar pendiente",
-                {
-                    if (vm.requireQualityConfirmation()) vm.saveDraft(ReportStatus.EN_COLA, sendNow = true)
-                },
-                Modifier.weight(1f),
-                ButtonStyle.Copper
+                "Guardar en cola (enviar después)",
+                { if (vm.requireQualityConfirmation()) vm.saveDraft(ReportStatus.EN_COLA) },
+                Modifier.fillMaxWidth(),
+                ButtonStyle.Secondary
             )
+        } else {
+            Notice(
+                "El reporte se guardará en este dispositivo como pendiente de sincronización. " +
+                    "Aún no existe un servidor remoto, por lo que no se marcará como enviado."
+            )
+            ActionRow {
+                VButton("← Corregir", vm::backToAttachments, Modifier.weight(1f), ButtonStyle.Secondary)
+                VButton(
+                    "Guardar reporte",
+                    { if (vm.requireQualityConfirmation()) vm.saveDraft(ReportStatus.EN_COLA) },
+                    Modifier.weight(1f),
+                    ButtonStyle.Copper
+                )
+            }
         }
-        VButton(
-            "Guardar en cola (enviar después)",
-            { if (vm.requireQualityConfirmation()) vm.saveDraft(ReportStatus.EN_COLA) },
-            Modifier.fillMaxWidth(),
-            ButtonStyle.Secondary
-        )
         VButton(
             "Guardar como borrador",
             { vm.saveDraft(ReportStatus.BORRADOR) },
