@@ -91,7 +91,7 @@ fun SplashScreen() {
             verticalArrangement = Arrangement.spacedBy(2.dp)
         ) {
             Text("Captura de reportes operacionales", color = HeaderMuted, fontSize = 12.sp)
-            Text("Prototipo académico DSY1105", color = HeaderMuted.copy(alpha = 0.7f), fontSize = 11.sp)
+            Text("Reportes, trazabilidad y control", color = HeaderMuted.copy(alpha = 0.7f), fontSize = 11.sp)
         }
     }
 }
